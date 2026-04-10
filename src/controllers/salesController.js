@@ -25,7 +25,7 @@ async function getProductByCode(req, res) {
 
 async function searchProducts(req, res) {
   const q = String(req.query.q || "").trim();
-  const minLen = 2;
+  const minLen = 1;
   if (q.length < minLen) {
     return res.json([]);
   }

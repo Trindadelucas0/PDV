@@ -2,6 +2,7 @@ const items = [];
 let debounceTimer = null;
 let sugestoesLista = [];
 let selectedSugIndex = -1;
+let activeSearchController = null;
 
 function showToast(message, type = "info") {
   const root = document.getElementById("toast_root");
@@ -9,11 +10,11 @@ function showToast(message, type = "info") {
   const el = document.createElement("div");
   const bg =
     type === "success"
-      ? "bg-emerald-700"
+      ? "bg-amber-500 text-neutral-950"
       : type === "error"
         ? "bg-red-700"
-        : "bg-slate-800";
-  el.className = `${bg} text-white text-sm px-4 py-2 rounded-lg shadow-lg pointer-events-auto`;
+        : "bg-neutral-800 text-amber-100 border border-amber-500/25";
+  el.className = `${bg} text-sm px-4 py-2 rounded-lg shadow-lg pointer-events-auto`;
   el.textContent = message;
   root.appendChild(el);
   setTimeout(() => {
@@ -34,15 +35,15 @@ function renderTable() {
   tbody.innerHTML = "";
   items.forEach((item, index) => {
     const tr = document.createElement("tr");
-    tr.className = "border-t";
+    tr.className = "border-t border-slate-800 text-slate-200";
     tr.innerHTML = `
       <td class="p-2">${item.nome}</td>
       <td class="p-2 text-center">
-        <input data-idx="${index}" class="qty border w-16 text-center rounded" type="number" min="1" value="${item.quantidade}" />
+        <input data-idx="${index}" class="qty bg-neutral-950 border border-slate-700 text-slate-100 w-16 text-center rounded" type="number" min="1" value="${item.quantidade}" />
       </td>
       <td class="p-2 text-center">${currency(item.preco)}</td>
       <td class="p-2 text-center">${currency(item.subtotal)}</td>
-      <td class="p-2 text-center"><button type="button" data-idx="${index}" class="remove text-red-600 hover:underline">Remover</button></td>
+      <td class="p-2 text-center"><button type="button" data-idx="${index}" class="remove text-red-400 hover:text-red-300 hover:underline">Remover</button></td>
     `;
     tbody.appendChild(tr);
   });
@@ -89,7 +90,7 @@ function updateMistoHint() {
   const soma = round2(pd + pc + pp);
   const ok = Math.abs(soma - total) < 0.03;
   el.textContent = `Soma: ${currency(soma)} · Total: ${currency(total)} ${ok ? "(ok)" : "(ajuste para fechar)"}`;
-  el.className = `text-xs font-medium ${ok ? "text-emerald-700" : "text-amber-700"}`;
+  el.className = `text-xs font-medium ${ok ? "text-emerald-400" : "text-amber-300"}`;
 }
 
 function updateTotals() {
@@ -150,24 +151,33 @@ function renderSugestoes(lista) {
     return;
   }
   sugestoesLista = lista;
+  if (selectedSugIndex >= lista.length) selectedSugIndex = lista.length - 1;
   box.innerHTML = lista
     .map(
       (p, i) =>
-        `<button type="button" data-idx="${i}" class="sug-item w-full text-left px-3 py-2 text-sm hover:bg-slate-50 border-b border-slate-100 last:border-0">
-          <span class="font-medium">${escapeHtml(p.nome)}</span>
-          <span class="text-slate-500 text-xs ml-2">${escapeHtml(p.codigo_barras)} · ${currency(p.preco)} · est. ${p.estoque}</span>
-        </button>`
+        `<div role="option" data-idx="${i}" class="sug-item w-full text-left px-3 py-2 text-sm cursor-pointer border-b border-slate-800 last:border-0 ${i === selectedSugIndex ? "bg-amber-500/20" : "hover:bg-neutral-900"}">
+          <span class="font-medium text-amber-100">${escapeHtml(p.nome)}</span>
+          <span class="text-slate-300 text-xs ml-2">${escapeHtml(p.codigo_barras)} · ${currency(p.preco)} · est. ${p.estoque}</span>
+        </div>`
     )
     .join("");
   box.classList.remove("hidden");
-  box.querySelectorAll(".sug-item").forEach((btn) => {
-    btn.onclick = () => {
-      const p = lista[Number(btn.dataset.idx)];
+  box.querySelectorAll(".sug-item").forEach((item) => {
+    item.onmousedown = (e) => {
+      e.preventDefault();
+      const p = lista[Number(item.dataset.idx)];
       addProductFromJson(p);
       document.getElementById("busca_produto").value = "";
       hideSugestoes();
+      document.getElementById("busca_produto").focus();
     };
   });
+}
+
+function selectSuggestionByIndex(idx) {
+  if (!sugestoesLista.length) return;
+  selectedSugIndex = Math.max(0, Math.min(idx, sugestoesLista.length - 1));
+  renderSugestoes(sugestoesLista);
 }
 
 function escapeHtml(s) {
@@ -177,21 +187,31 @@ function escapeHtml(s) {
 }
 
 async function buscarSugestoes(q) {
-  if (q.length < 2) {
+  if (q.length === 0) {
     hideSugestoes();
+    if (activeSearchController) {
+      activeSearchController.abort();
+      activeSearchController = null;
+    }
     return;
   }
+  if (activeSearchController) activeSearchController.abort();
+  activeSearchController = new AbortController();
   const ld = document.getElementById("busca_loading");
   if (ld) ld.classList.remove("hidden");
   try {
-    const res = await fetch(`/vendas/api/produtos?q=${encodeURIComponent(q)}`);
+    const res = await fetch(`/vendas/api/produtos?q=${encodeURIComponent(q)}`, {
+      signal: activeSearchController.signal
+    });
     if (!res.ok) {
       showToast("Não foi possível buscar produtos.", "error");
       return;
     }
     const data = await res.json();
+    selectedSugIndex = data.length ? 0 : -1;
     renderSugestoes(data);
   } catch (e) {
+    if (e?.name === "AbortError") return;
     showToast("Erro de rede. Verifique a conexão.", "error");
     hideSugestoes();
   } finally {
@@ -262,18 +282,52 @@ async function tryAddFromInput() {
     showToast("Erro de rede.", "error");
     return;
   }
-  showToast("Produto não encontrado. Use 2+ letras ou o código completo.", "error");
+  showToast("Produto não encontrado. Use 1+ letra ou o código completo.", "error");
 }
 
 document.getElementById("busca_produto").addEventListener("input", (e) => {
   const q = e.target.value.trim();
   clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => buscarSugestoes(q), 300);
+  debounceTimer = setTimeout(() => buscarSugestoes(q), 140);
 });
 
 document.getElementById("busca_produto").addEventListener("keydown", (e) => {
+  const listVisible = sugestoesLista.length > 0;
+  if (e.key === "ArrowDown" && listVisible) {
+    e.preventDefault();
+    if (selectedSugIndex < 0) {
+      selectSuggestionByIndex(0);
+    } else {
+      selectSuggestionByIndex(selectedSugIndex + 1);
+    }
+    return;
+  }
+  if (e.key === "ArrowUp" && listVisible) {
+    e.preventDefault();
+    if (selectedSugIndex < 0) {
+      selectSuggestionByIndex(0);
+    } else {
+      selectSuggestionByIndex(selectedSugIndex - 1);
+    }
+    return;
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    hideSugestoes();
+    return;
+  }
+  if (e.key === "Tab" && listVisible) {
+    hideSugestoes();
+    return;
+  }
   if (e.key === "Enter") {
     e.preventDefault();
+    if (listVisible && selectedSugIndex >= 0) {
+      addProductFromJson(sugestoesLista[selectedSugIndex]);
+      e.currentTarget.value = "";
+      hideSugestoes();
+      return;
+    }
     tryAddFromInput();
   }
 });

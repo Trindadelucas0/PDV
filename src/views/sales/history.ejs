@@ -1,23 +1,32 @@
 <%- include("../partials/head", { title: "Histórico de Vendas" }) %>
 <%- include("../partials/sidebar") %>
-<h2 class="text-2xl font-bold mb-4">Histórico de Vendas</h2>
-<form class="bg-white p-4 rounded-xl shadow mb-4 flex flex-wrap gap-3 items-end">
-  <div><label class="text-sm">De</label><input type="date" name="startDate" value="<%= startDate || '' %>" class="border rounded px-2 py-1"></div>
-  <div><label class="text-sm">Até</label><input type="date" name="endDate" value="<%= endDate || '' %>" class="border rounded px-2 py-1"></div>
-  <button class="bg-brand-600 text-white px-4 py-2 rounded">Filtrar</button>
+<section class="bg-neutral-900 border border-amber-500/20 rounded-2xl p-6 mb-6">
+  <h2 class="text-3xl font-bold text-amber-100 mb-1">Historico de Vendas</h2>
+  <p class="text-sm text-slate-300">Filtre por periodo e abra os detalhes de cada venda.</p>
+</section>
+<form class="bg-neutral-900 p-4 rounded-xl border border-amber-500/20 mb-4 flex flex-wrap gap-3 items-end">
+  <div>
+    <label class="text-sm text-slate-300">De</label>
+    <input type="date" name="startDate" value="<%= startDate || '' %>" class="block bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+  </div>
+  <div>
+    <label class="text-sm text-slate-300">Até</label>
+    <input type="date" name="endDate" value="<%= endDate || '' %>" class="block bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
+  </div>
+  <button class="bg-brand-500 hover:bg-brand-600 text-neutral-950 px-4 py-2 rounded-lg font-semibold">Filtrar</button>
 </form>
-<div class="bg-white rounded-xl shadow overflow-auto">
+<div class="bg-neutral-900 rounded-xl border border-amber-500/20 overflow-auto">
   <table class="w-full text-sm">
-    <thead class="bg-slate-50"><tr><th class="p-3">ID</th><th class="p-3">Cliente</th><th class="p-3">Total</th><th class="p-3">Pagamento</th><th class="p-3">Data</th><th class="p-3">Detalhes</th></tr></thead>
+    <thead class="bg-neutral-950 text-amber-100"><tr><th class="p-3">ID</th><th class="p-3">Cliente</th><th class="p-3">Total</th><th class="p-3">Pagamento</th><th class="p-3">Data</th><th class="p-3">Detalhes</th></tr></thead>
     <tbody>
       <% sales.forEach((s) => { %>
-      <tr class="border-t">
+      <tr class="border-t border-slate-800 text-slate-200">
         <td class="p-3 text-center"><%= s.id %></td>
         <td class="p-3 text-center"><%= s.cliente_nome || "Consumidor final" %></td>
-        <td class="p-3 text-center">R$ <%= Number(s.total).toFixed(2) %></td>
+        <td class="p-3 text-center text-amber-200 font-semibold">R$ <%= Number(s.total).toFixed(2) %></td>
         <td class="p-3 text-center"><%= s.forma_pagamento %></td>
-        <td class="p-3 text-center"><%= new Date(s.created_at).toLocaleString("pt-BR") %></td>
-        <td class="p-3 text-center"><a class="text-blue-600" href="/historico/<%= s.id %>">Ver</a></td>
+        <td class="p-3 text-center text-slate-300"><%= new Date(s.created_at).toLocaleString("pt-BR") %></td>
+        <td class="p-3 text-center"><a class="text-amber-300 hover:text-amber-200 font-medium" href="/historico/<%= s.id %>">Ver</a></td>
       </tr>
       <% }) %>
     </tbody>

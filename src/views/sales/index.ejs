@@ -1,27 +1,33 @@
 <%- include("../partials/head", { title: "PDV" }) %>
 <%- include("../partials/sidebar") %>
 
-<h2 class="text-2xl font-bold mb-2">Vendas / Caixa</h2>
-<p class="text-sm text-slate-500 mb-1">Digite o nome ou o código do produto; escolha na lista ou bip o código e pressione Enter.</p>
-<p class="text-xs text-slate-400 mb-5">Atalhos: <kbd class="px-1 bg-slate-100 rounded">F2</kbd> busca · <kbd class="px-1 bg-slate-100 rounded">F4</kbd> finalizar · <kbd class="px-1 bg-slate-100 rounded">Esc</kbd> fechar lista</p>
+<section class="bg-neutral-900 border border-amber-500/20 rounded-2xl p-6 mb-6">
+  <h2 class="text-3xl font-bold text-amber-100 mb-2">Vendas / Caixa</h2>
+  <p class="text-sm text-slate-300 mb-3">Digite o nome ou o código do produto; escolha na lista ou bip o código e pressione Enter.</p>
+  <div class="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+    <span class="px-2 py-1 rounded-md bg-neutral-950 border border-amber-500/30"><kbd>F2</kbd> busca</span>
+    <span class="px-2 py-1 rounded-md bg-neutral-950 border border-amber-500/30"><kbd>F4</kbd> finalizar</span>
+    <span class="px-2 py-1 rounded-md bg-neutral-950 border border-amber-500/30"><kbd>Esc</kbd> fechar lista</span>
+  </div>
+</section>
 <div id="toast_root" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm"></div>
 
 <div class="grid lg:grid-cols-3 gap-5">
-  <section class="lg:col-span-2 bg-white rounded-xl shadow border border-slate-100 p-5">
+  <section class="lg:col-span-2 bg-neutral-900 rounded-xl border border-amber-500/20 p-5">
     <div class="flex items-center gap-2 mb-1">
-      <label class="block text-sm font-medium text-slate-700">Buscar produto</label>
-      <span id="busca_loading" class="hidden text-xs text-brand-600 font-medium">Buscando...</span>
+      <label class="block text-sm font-medium text-amber-100">Buscar produto</label>
+      <span id="busca_loading" class="hidden text-xs text-amber-300 font-medium">Buscando...</span>
     </div>
     <div class="relative mb-2">
-      <input id="busca_produto" autocomplete="off" class="w-full border border-slate-300 rounded-lg px-3 py-2.5 pr-24" placeholder="Nome, parte do nome ou código de barras" />
-      <button type="button" id="addBtn" class="absolute right-1 top-1 bottom-1 bg-brand-600 hover:bg-brand-700 text-white px-3 rounded-md text-sm">Adicionar</button>
-      <div id="sugestoes" class="hidden absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-56 overflow-auto"></div>
+      <input id="busca_produto" autocomplete="off" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2.5 pr-24 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Nome, parte do nome ou código de barras" />
+      <button type="button" id="addBtn" class="absolute right-1 top-1 bottom-1 bg-brand-500 hover:bg-brand-600 text-neutral-950 px-3 rounded-md text-sm font-semibold transition-colors">Adicionar</button>
+      <div id="sugestoes" class="hidden absolute z-20 left-0 right-0 mt-1 bg-neutral-950 border border-amber-500/25 rounded-lg shadow-2xl max-h-56 overflow-auto"></div>
     </div>
-    <p class="text-xs text-slate-500 mb-4">Mínimo 2 letras para buscar na lista. Código completo adiciona direto.</p>
+    <p class="text-xs text-slate-400 mb-4">A partir de 1 letra já busca na lista. Código completo adiciona direto.</p>
 
-    <div class="overflow-auto rounded-lg border border-slate-100">
+    <div class="overflow-auto rounded-lg border border-slate-700">
       <table class="w-full text-sm" id="itemsTable">
-        <thead class="bg-slate-50">
+        <thead class="bg-neutral-950 text-amber-100">
           <tr>
             <th class="p-2 text-left">Produto</th>
             <th class="p-2">Qtd</th>
@@ -35,20 +41,20 @@
     </div>
   </section>
 
-  <section class="bg-white rounded-xl shadow border border-slate-100 p-5 space-y-4">
+  <section class="bg-neutral-900 rounded-xl border border-amber-500/20 p-5 space-y-4">
     <div>
-      <h3 class="font-semibold text-slate-800 mb-2">Cliente</h3>
-      <input id="cliente_nome" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-2" placeholder="Nome" />
-      <input id="cliente_cpf" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-2" placeholder="CPF" />
-      <input id="cliente_tel" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-2" placeholder="Telefone" />
-      <input id="cliente_email" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-2" placeholder="Email" />
-      <textarea id="cliente_endereco" class="w-full border border-slate-300 rounded-lg px-3 py-2" rows="2" placeholder="Endereço"></textarea>
+      <h3 class="font-semibold text-amber-100 mb-2">Cliente</h3>
+      <input id="cliente_nome" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Nome" />
+      <input id="cliente_cpf" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="CPF" />
+      <input id="cliente_tel" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Telefone" />
+      <input id="cliente_email" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Email" />
+      <textarea id="cliente_endereco" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" rows="2" placeholder="Endereço"></textarea>
     </div>
 
     <div>
-      <h3 class="font-semibold text-slate-800 mb-2">Pagamento</h3>
-      <label class="block text-xs text-slate-500 mb-1">Forma principal</label>
-      <select id="modo_pagamento" class="w-full border border-slate-300 rounded-lg px-3 py-2 mb-3">
+      <h3 class="font-semibold text-amber-100 mb-2">Pagamento</h3>
+      <label class="block text-xs text-slate-400 mb-1">Forma principal</label>
+      <select id="modo_pagamento" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-amber-500">
         <option value="Dinheiro">Dinheiro</option>
         <option value="Pix">Pix</option>
         <option value="Cartão">Cartão</option>
@@ -56,15 +62,15 @@
       </select>
 
       <div id="painel_dinheiro" class="space-y-2">
-        <label class="block text-xs text-slate-600">Valor recebido (dinheiro)</label>
-        <input id="valor_recebido" type="number" step="0.01" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="0,00" />
+        <label class="block text-xs text-slate-400">Valor recebido (dinheiro)</label>
+        <input id="valor_recebido" type="number" step="0.01" min="0" value="0" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="0,00" />
       </div>
 
-      <div id="painel_pix" class="hidden text-sm text-slate-600 py-2">Pagamento integral via Pix (sem troco).</div>
+      <div id="painel_pix" class="hidden text-sm text-slate-300 py-2">Pagamento integral via Pix (sem troco).</div>
 
       <div id="painel_cartao" class="hidden space-y-2">
-        <label class="block text-xs text-slate-600">Parcelas no cartão</label>
-        <select id="parcelas_cartao" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+        <label class="block text-xs text-slate-400">Parcelas no cartão</label>
+        <select id="parcelas_cartao" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
           <% for (let i = 1; i <= 12; i++) { %>
             <option value="<%= i %>"><%= i %>x</option>
           <% } %>
@@ -72,41 +78,41 @@
       </div>
 
       <div id="painel_misto" class="hidden space-y-2">
-        <p class="text-xs text-slate-600">Informe quanto entra em cada forma. A soma deve fechar o total da venda.</p>
+        <p class="text-xs text-slate-400">Informe quanto entra em cada forma. A soma deve fechar o total da venda.</p>
         <div>
-          <label class="block text-xs text-slate-600">Parte em dinheiro (R$)</label>
-          <input id="parte_dinheiro" type="number" step="0.01" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+          <label class="block text-xs text-slate-400">Parte em dinheiro (R$)</label>
+          <input id="parte_dinheiro" type="number" step="0.01" min="0" value="0" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
         </div>
         <div>
-          <label class="block text-xs text-slate-600">Parte no cartão (R$)</label>
-          <input id="parte_cartao" type="number" step="0.01" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+          <label class="block text-xs text-slate-400">Parte no cartão (R$)</label>
+          <input id="parte_cartao" type="number" step="0.01" min="0" value="0" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
         </div>
         <div>
-          <label class="block text-xs text-slate-600">Parte no Pix (R$) — opcional</label>
-          <input id="parte_pix" type="number" step="0.01" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+          <label class="block text-xs text-slate-400">Parte no Pix (R$) — opcional</label>
+          <input id="parte_pix" type="number" step="0.01" min="0" value="0" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
         </div>
-        <button type="button" id="btn_restante_cartao" class="text-sm text-brand-700 hover:underline">Usar o restante no cartão</button>
+        <button type="button" id="btn_restante_cartao" class="text-sm text-amber-300 hover:text-amber-200 hover:underline">Usar o restante no cartão</button>
         <div>
-          <label class="block text-xs text-slate-600">Parcelas (só sobre o valor no cartão)</label>
-          <select id="parcelas_misto" class="w-full border border-slate-300 rounded-lg px-3 py-2">
+          <label class="block text-xs text-slate-400">Parcelas (só sobre o valor no cartão)</label>
+          <select id="parcelas_misto" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
             <% for (let i = 1; i <= 12; i++) { %>
               <option value="<%= i %>"><%= i %>x</option>
             <% } %>
           </select>
         </div>
         <div>
-          <label class="block text-xs text-slate-600">Dinheiro que o cliente entregou (para calcular troco)</label>
-          <input id="valor_recebido_dinheiro" type="number" step="0.01" min="0" value="0" class="w-full border border-slate-300 rounded-lg px-3 py-2" />
+          <label class="block text-xs text-slate-400">Dinheiro que o cliente entregou (para calcular troco)</label>
+          <input id="valor_recebido_dinheiro" type="number" step="0.01" min="0" value="0" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
         </div>
         <p id="misto_soma_hint" class="text-xs font-medium"></p>
       </div>
     </div>
 
-    <div class="bg-slate-100 rounded-lg p-3 text-sm">
-      <p>Total: <strong id="total">R$ 0.00</strong></p>
-      <p>Troco: <strong id="troco">R$ 0.00</strong></p>
+    <div class="bg-neutral-950 border border-amber-500/30 rounded-lg p-4 text-sm">
+      <p class="text-slate-300">Total: <strong id="total" class="text-amber-300 text-lg">R$ 0.00</strong></p>
+      <p class="text-slate-300">Troco: <strong id="troco" class="text-amber-200">R$ 0.00</strong></p>
     </div>
-    <button type="button" id="finishBtn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 rounded-lg">Finalizar e imprimir recibo</button>
+    <button type="button" id="finishBtn" class="w-full bg-brand-500 hover:bg-brand-600 text-neutral-950 font-semibold py-3 rounded-lg transition-colors">Finalizar e imprimir recibo</button>
   </section>
 </div>
 <script src="/js/pdv.js"></script>

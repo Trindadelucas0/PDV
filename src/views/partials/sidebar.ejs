@@ -1,15 +1,16 @@
-<div class="min-h-screen flex">
-  <aside class="w-64 bg-slate-900 text-slate-100 p-5 hidden md:block">
-    <h1 class="text-xl font-bold mb-6">ControlePDV</h1>
+<div class="min-h-screen flex bg-neutral-950">
+  <aside class="w-64 bg-neutral-950 text-amber-50 p-5 hidden md:block border-r border-amber-500/20">
+    <h1 class="text-xl font-bold mb-1 text-amber-400">ControlePDV</h1>
+    <p class="text-xs text-amber-200/70 mb-6">Painel administrativo</p>
     <nav class="space-y-2">
-      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/">Dashboard</a>
-      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/produtos">Produtos</a>
-      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/produtos/estoque/ajustar">Ajuste de estoque</a>
-      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/vendas">PDV</a>
-      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/historico">Histórico</a>
+      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/">Dashboard</a>
+      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/produtos">Produtos</a>
+      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/produtos/estoque/ajustar">Ajuste de estoque</a>
+      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/vendas">PDV</a>
+      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/historico">Histórico</a>
     </nav>
     <form action="/logout" method="post" class="mt-8">
-      <button class="w-full bg-red-500 hover:bg-red-600 px-3 py-2 rounded font-medium">Sair</button>
+      <button class="w-full bg-amber-500 hover:bg-amber-400 text-neutral-950 px-3 py-2 rounded-lg font-semibold transition-colors">Sair</button>
     </form>
   </aside>
-  <main class="flex-1 p-4 md:p-8">
+  <main class="flex-1 p-4 md:p-8 bg-gradient-to-b from-neutral-900 to-neutral-950 text-slate-100">
