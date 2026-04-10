@@ -1,0 +1,22 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente (não versionar segredos)
+.env
+.env.example
+.env.local
+.env.*.local
+
+# Build / gerado (Tailwind)
+src/public/css/styles.css
+
+# Pasta de arquivos locais / uploads
+ARQUIVOS/
+
+# Arquivos locais / temporários
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp

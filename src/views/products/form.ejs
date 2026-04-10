@@ -1,0 +1,48 @@
+<%- include("../partials/head", { title: product ? "Editar produto" : "Novo produto" }) %>
+<%- include("../partials/sidebar") %>
+
+<div class="max-w-3xl">
+  <h2 class="text-2xl font-bold text-slate-900 mb-1"><%= product ? "Editar produto" : "Cadastrar produto" %></h2>
+  <p class="text-sm text-slate-500 mb-6">Preencha os campos obrigatórios (*). Categoria e fornecedor são opcionais.</p>
+
+  <form action="<%= action %>" method="<%= method %>" class="bg-white rounded-xl shadow border border-slate-200 p-6 space-y-4">
+    <div class="grid md:grid-cols-2 gap-4">
+      <div>
+        <label for="nome" class="block text-sm font-medium text-slate-700 mb-1">Nome <span class="text-red-500">*</span></label>
+        <input id="nome" name="nome" value="<%= product?.nome || '' %>" type="text" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Ex.: Refrigerante 2L" required />
+      </div>
+      <div>
+        <label for="codigo_barras" class="block text-sm font-medium text-slate-700 mb-1">Código de barras <span class="text-red-500">*</span></label>
+        <input id="codigo_barras" name="codigo_barras" value="<%= product?.codigo_barras || '' %>" type="text" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Ex.: 7891234567890 ou PROD001" required />
+      </div>
+      <div>
+        <label for="estoque" class="block text-sm font-medium text-slate-700 mb-1">Estoque <span class="text-red-500">*</span></label>
+        <input id="estoque" name="estoque" type="number" min="0" step="1" value="<%= product?.estoque ?? 0 %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="0" required />
+      </div>
+      <div>
+        <label for="custo" class="block text-sm font-medium text-slate-700 mb-1">Custo (R$) <span class="text-red-500">*</span></label>
+        <input id="custo" name="custo" type="number" step="0.01" min="0" value="<%= product?.custo ?? 0 %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="0,00" required />
+      </div>
+      <div>
+        <label for="preco" class="block text-sm font-medium text-slate-700 mb-1">Preço de venda (R$) <span class="text-red-500">*</span></label>
+        <input id="preco" name="preco" type="number" step="0.01" min="0" value="<%= product?.preco ?? 0 %>" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="0,00" required />
+      </div>
+      <div>
+        <label for="categoria" class="block text-sm font-medium text-slate-700 mb-1">Categoria</label>
+        <input id="categoria" name="categoria" value="<%= product?.categoria || '' %>" type="text" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Ex.: Bebidas" />
+      </div>
+      <div class="md:col-span-2">
+        <label for="fornecedor" class="block text-sm font-medium text-slate-700 mb-1">Fornecedor</label>
+        <input id="fornecedor" name="fornecedor" value="<%= product?.fornecedor || '' %>" type="text" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Ex.: Distribuidora ABC" />
+      </div>
+    </div>
+
+    <div class="flex flex-wrap gap-3 pt-2">
+      <button type="button" class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm" onclick="document.getElementById('codigo_barras').focus(); document.getElementById('codigo_barras').select();">Bipar código</button>
+      <button type="submit" class="bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 rounded-lg">Salvar</button>
+      <a href="/produtos" class="px-5 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<%- include("../partials/footer") %>

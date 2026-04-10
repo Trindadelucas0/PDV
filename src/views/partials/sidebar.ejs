@@ -1,0 +1,15 @@
+<div class="min-h-screen flex">
+  <aside class="w-64 bg-slate-900 text-slate-100 p-5 hidden md:block">
+    <h1 class="text-xl font-bold mb-6">ControlePDV</h1>
+    <nav class="space-y-2">
+      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/">Dashboard</a>
+      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/produtos">Produtos</a>
+      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/produtos/estoque/ajustar">Ajuste de estoque</a>
+      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/vendas">PDV</a>
+      <a class="block px-3 py-2 rounded hover:bg-slate-800" href="/historico">Histórico</a>
+    </nav>
+    <form action="/logout" method="post" class="mt-8">
+      <button class="w-full bg-red-500 hover:bg-red-600 px-3 py-2 rounded font-medium">Sair</button>
+    </form>
+  </aside>
+  <main class="flex-1 p-4 md:p-8">

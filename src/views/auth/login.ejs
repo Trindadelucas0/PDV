@@ -1,0 +1,17 @@
+<%- include("../partials/head", { title: "Login" }) %>
+<div class="min-h-screen flex items-center justify-center bg-slate-100">
+  <div class="bg-white shadow-lg rounded-xl p-8 w-full max-w-md">
+    <h1 class="text-2xl font-bold mb-2">Entrar no sistema</h1>
+    <p class="text-slate-500 mb-6">Informe seu usuário e senha.</p>
+    <% if (error) { %>
+      <div class="bg-red-50 text-red-700 p-3 rounded mb-4"><%= error %></div>
+    <% } %>
+    <form action="/login" method="post" class="space-y-4">
+      <input name="username" class="w-full border rounded px-3 py-2" placeholder="Usuário" required />
+      <input name="password" type="password" class="w-full border rounded px-3 py-2" placeholder="Senha" required />
+      <button class="w-full bg-brand-600 text-white rounded py-2 hover:bg-brand-700">Entrar</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<%- include("../partials/head", { title: "Recibo" }) %>
+<div class="max-w-sm mx-auto mt-6 bg-white p-4 border text-sm font-mono print:shadow-none">
+  <h1 class="text-center font-bold text-lg"><%= typeof store !== "undefined" && store.name ? store.name : "Controle PDV" %></h1>
+  <% if (typeof store !== "undefined" && store.phone) { %><p class="text-center">Tel: <%= store.phone %></p><% } %>
+  <% if (typeof store !== "undefined" && store.address) { %><p class="text-center text-xs"><%= store.address %></p><% } %>
+  <hr class="my-3" />
+  <p>Venda Nº: <%= sale.id %></p>
+  <p>Data: <%= new Date(sale.created_at).toLocaleString("pt-BR") %></p>
+  <p>Cliente: <%= sale.cliente_nome || "Consumidor Final" %></p>
+  <p>CPF: <%= sale.cpf || "-" %></p>
+  <hr class="my-3" />
+  <% items.forEach((item) => { %>
+    <div class="flex justify-between gap-2">
+      <span><%= item.nome %> x<%= item.quantidade %></span>
+      <span>R$ <%= Number(item.subtotal).toFixed(2) %></span>
+    </div>
+  <% }) %>
+  <hr class="my-3" />
+  <p>Total: R$ <%= Number(sale.total).toFixed(2) %></p>
+  <p>Forma: <%= sale.forma_pagamento %></p>
+  <% if (Number(sale.pagamento_dinheiro) > 0) { %>
+    <p>Dinheiro: R$ <%= Number(sale.pagamento_dinheiro).toFixed(2) %></p>
+  <% } %>
+  <% if (Number(sale.pagamento_pix) > 0) { %>
+    <p>Pix: R$ <%= Number(sale.pagamento_pix).toFixed(2) %></p>
+  <% } %>
+  <% if (Number(sale.pagamento_cartao) > 0) { %>
+    <p>Cartão: R$ <%= Number(sale.pagamento_cartao).toFixed(2) %>
+      <% if (Number(sale.parcelas) > 1) { %>(<%= sale.parcelas %>x)<% } %>
+    </p>
+  <% } %>
+  <p>Valor pago: R$ <%= Number(sale.valor_pago).toFixed(2) %></p>
+  <p>Troco: R$ <%= Number(sale.troco).toFixed(2) %></p>
+  <hr class="my-3" />
+  <p class="text-center">Obrigado pela preferência!</p>
+  <button type="button" class="mt-4 w-full bg-slate-900 text-white py-2 rounded print:hidden" onclick="window.print()">Imprimir</button>
+</div>
+</body>
+</html>

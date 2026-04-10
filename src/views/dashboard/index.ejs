@@ -1,0 +1,104 @@
+<%- include("../partials/head", { title: "Dashboard" }) %>
+<%- include("../partials/sidebar") %>
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+  <h2 class="text-2xl font-bold">Dashboard</h2>
+  <form method="get" class="flex flex-wrap items-end gap-2 bg-white p-3 rounded-xl shadow">
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">De</label>
+      <input type="date" name="de" value="<%= startDate %>" class="border rounded px-2 py-1" />
+    </div>
+    <div>
+      <label class="block text-xs text-slate-500 mb-1">Até</label>
+      <input type="date" name="ate" value="<%= endDate %>" class="border rounded px-2 py-1" />
+    </div>
+    <button class="bg-brand-600 hover:bg-brand-700 text-white px-3 py-2 rounded">Aplicar</button>
+  </form>
+</div>
+<div class="grid md:grid-cols-4 gap-4 mb-8">
+  <div class="bg-white rounded-xl shadow p-5">
+    <p class="text-slate-500">Total vendido</p>
+    <p class="text-2xl font-bold">R$ <%= Number(totals.total_periodo).toFixed(2) %></p>
+  </div>
+  <div class="bg-white rounded-xl shadow p-5">
+    <p class="text-slate-500">Lucro</p>
+    <p class="text-2xl font-bold text-emerald-600">R$ <%= Number(totals.lucro_periodo).toFixed(2) %></p>
+  </div>
+  <div class="bg-white rounded-xl shadow p-5">
+    <p class="text-slate-500">Vendas</p>
+    <p class="text-2xl font-bold"><%= totals.qtd_vendas %></p>
+  </div>
+  <div class="bg-white rounded-xl shadow p-5">
+    <p class="text-slate-500">Ticket médio</p>
+    <p class="text-2xl font-bold">R$ <%= Number(ticketMedio).toFixed(2) %></p>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-5 mb-4">
+  <h3 class="font-semibold mb-3">Visão de estoque</h3>
+  <div class="grid md:grid-cols-3 gap-4 text-sm">
+    <div class="p-3 bg-slate-50 rounded">
+      <p class="text-slate-500">Unidades em estoque</p>
+      <p class="text-xl font-bold"><%= Number(stockOverview.unidades_estoque) %></p>
+    </div>
+    <div class="p-3 bg-slate-50 rounded">
+      <p class="text-slate-500">Valor em custo</p>
+      <p class="text-xl font-bold">R$ <%= Number(stockOverview.valor_custo_estoque).toFixed(2) %></p>
+    </div>
+    <div class="p-3 bg-slate-50 rounded">
+      <p class="text-slate-500">Valor em venda</p>
+      <p class="text-xl font-bold">R$ <%= Number(stockOverview.valor_venda_estoque).toFixed(2) %></p>
+    </div>
+  </div>
+</div>
+
+<div class="bg-white rounded-xl shadow p-5 mb-4">
+  <h3 class="font-semibold mb-3">Evolução de vendas e lucro</h3>
+  <canvas id="salesChart" height="95"></canvas>
+</div>
+
+<div class="grid md:grid-cols-2 gap-4">
+  <div class="bg-white rounded-xl shadow p-5">
+    <h3 class="font-semibold mb-3">Produtos com estoque baixo</h3>
+    <ul class="space-y-2">
+      <% lowStock.forEach((p) => { %>
+        <li class="flex justify-between border-b pb-1"><span><%= p.nome %></span><span class="text-red-600 font-medium"><%= p.estoque %></span></li>
+      <% }) %>
+    </ul>
+  </div>
+  <div class="bg-white rounded-xl shadow p-5">
+    <h3 class="font-semibold mb-3">Últimas vendas</h3>
+    <ul class="space-y-2">
+      <% latestSales.forEach((s) => { %>
+        <li class="flex justify-between border-b pb-1">
+          <span>#<%= s.id %> - <%= s.cliente_nome || "Consumidor final" %></span>
+          <span class="font-medium">R$ <%= Number(s.total).toFixed(2) %></span>
+        </li>
+      <% }) %>
+    </ul>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const chartRows = <%- JSON.stringify(chartRows || []) %>;
+  const labels = chartRows.map((r) => new Date(r.dia).toLocaleDateString("pt-BR"));
+  const totals = chartRows.map((r) => Number(r.total));
+  const profits = chartRows.map((r) => Number(r.lucro));
+  const canvas = document.getElementById("salesChart");
+  if (canvas && labels.length) {
+    new Chart(canvas, {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          { label: "Vendas (R$)", data: totals, borderWidth: 2, tension: 0.25 },
+          { label: "Lucro (R$)", data: profits, borderWidth: 2, tension: 0.25 }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { position: "bottom" } }
+      }
+    });
+  }
+</script>
+<%- include("../partials/footer") %>

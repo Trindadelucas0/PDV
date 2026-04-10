@@ -1,0 +1,37 @@
+<%- include("../partials/head", { title: "Produtos" }) %>
+<%- include("../partials/sidebar") %>
+<div class="flex justify-between items-center mb-5">
+  <h2 class="text-2xl font-bold">Produtos</h2>
+  <a href="/produtos/novo" class="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded">Novo produto</a>
+</div>
+<form method="get" class="mb-4">
+  <input name="search" value="<%= search %>" placeholder="Buscar por nome ou código" class="w-full md:w-96 border rounded px-3 py-2" />
+</form>
+<div class="bg-white rounded-xl shadow overflow-auto">
+  <table class="w-full text-sm">
+    <thead class="bg-slate-50">
+      <tr>
+        <th class="p-3 text-left">Nome</th><th class="p-3">Código</th><th class="p-3">Estoque</th><th class="p-3">Preço</th><th class="p-3">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% products.forEach((p) => { %>
+      <tr class="border-t">
+        <td class="p-3"><%= p.nome %></td>
+        <td class="p-3 text-center"><%= p.codigo_barras %></td>
+        <td class="p-3 text-center">
+          <span class="<%= p.estoque <= 5 ? 'text-red-600 font-bold' : '' %>"><%= p.estoque %></span>
+        </td>
+        <td class="p-3 text-center">R$ <%= Number(p.preco).toFixed(2) %></td>
+        <td class="p-3 text-center space-x-2">
+          <a href="/produtos/<%= p.id %>/editar" class="text-blue-600">Editar</a>
+          <form action="/produtos/<%= p.id %>?_method=DELETE" method="post" class="inline">
+            <button class="text-red-600" onclick="return confirm('Excluir produto?')">Excluir</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>
+<%- include("../partials/footer") %>
