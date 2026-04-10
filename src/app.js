@@ -12,8 +12,18 @@ const stockRoutes = require("./routes/stockRoutes");
 const salesRoutes = require("./routes/salesRoutes");
 const historyRoutes = require("./routes/historyRoutes");
 const { requireAuth } = require("./middlewares/auth");
+const logger = require("./utils/logger");
 
 const app = express();
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on("finish", () => {
+    const ms = Date.now() - start;
+    logger.http(`${req.method} ${req.originalUrl} → ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -53,5 +63,18 @@ app.use("/produtos/estoque", requireAuth, stockRoutes);
 app.use("/produtos", requireAuth, productRoutes);
 app.use("/vendas", requireAuth, salesRoutes);
 app.use("/historico", requireAuth, historyRoutes);
+
+app.use((req, res) => {
+  logger.warn(`404 — ${req.method} ${req.originalUrl}`);
+  res.status(404).send("Não encontrado.");
+});
+
+app.use((err, req, res, next) => {
+  logger.error(`${req.method} ${req.originalUrl} — erro na aplicação`, err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).send("Erro interno do servidor.");
+});
 
 module.exports = app;

@@ -9,4 +9,9 @@ const pool = new Pool({
   database: process.env.DB_NAME
 });
 
+pool.on("error", (err) => {
+  const logger = require("../utils/logger");
+  logger.error("Pool PostgreSQL: erro inesperado no cliente ocioso", err);
+});
+
 module.exports = pool;

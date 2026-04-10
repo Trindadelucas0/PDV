@@ -1,6 +1,9 @@
 const pool = require("./db");
+const logger = require("../utils/logger");
 
 async function initDb() {
+  logger.info("Verificando / criando tabelas e índices...");
+  try {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS produtos (
       id SERIAL PRIMARY KEY,
@@ -85,6 +88,12 @@ async function initDb() {
     );
   `);
   await pool.query("CREATE INDEX IF NOT EXISTS idx_estoque_mov_prod ON estoque_movimentacoes (produto_id);");
+
+  logger.info("Schema do banco verificado (tabelas e índices).");
+  } catch (err) {
+    logger.error("Falha ao inicializar schema do banco (initDb)", err);
+    throw err;
+  }
 }
 
 module.exports = initDb;

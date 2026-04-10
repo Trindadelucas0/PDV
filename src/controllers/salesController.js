@@ -1,3 +1,4 @@
+const logger = require("../utils/logger");
 const productModel = require("../models/productModel");
 const customerModel = require("../models/customerModel");
 const saleModel = require("../models/saleModel");
@@ -118,7 +119,7 @@ async function finalize(req, res) {
     if (err.code === "INSUFFICIENT_STOCK" || err.statusCode === 409) {
       return res.status(409).json({ error: err.message });
     }
-    console.error(err);
+    logger.error("Erro ao finalizar venda", err);
     return res.status(500).json({ error: "Erro ao finalizar venda. Tente novamente." });
   }
 }

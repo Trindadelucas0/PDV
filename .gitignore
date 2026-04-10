@@ -13,6 +13,9 @@ src/public/css/styles.css
 # Pasta de arquivos locais / uploads
 ARQUIVOS/
 
+# Logs da aplicação
+logs/
+
 # Arquivos locais / temporários
 *.log
 npm-debug.log*
