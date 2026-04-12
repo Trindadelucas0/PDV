@@ -1,4 +1,4 @@
-<div class="min-h-screen bg-neutral-950">
+<div class="min-h-screen bg-neutral-950 md:flex md:flex-row md:items-stretch">
   <div
     id="sidebar_overlay"
     class="hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] md:hidden"
@@ -19,7 +19,7 @@
 
   <aside
     id="app_sidebar"
-    class="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,88vw)] flex-col bg-neutral-950 text-amber-50 shadow-xl shadow-black/40 border-r border-amber-500/20 transition-transform duration-300 ease-out motion-reduce:transition-none -translate-x-full md:translate-x-0 md:shadow-none"
+    class="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,88vw)] shrink-0 flex-col border-r border-amber-500/20 bg-neutral-950 text-amber-50 shadow-xl shadow-black/40 transition-transform duration-300 ease-out motion-reduce:transition-none -translate-x-full md:relative md:inset-auto md:z-0 md:h-auto md:min-h-screen md:translate-x-0 md:shadow-none"
     aria-label="Menu de navegação"
   >
     <div class="flex shrink-0 items-center justify-between gap-2 border-b border-amber-500/15 px-4 py-3">
@@ -54,6 +54,7 @@
     </form>
   </aside>
 
+  <div class="flex min-h-0 min-w-0 flex-1 flex-col md:min-h-screen">
   <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-amber-500/20 bg-neutral-950/95 px-4 py-3 backdrop-blur-md md:hidden">
     <button
       id="sidebar_toggle_btn"
@@ -191,4 +192,4 @@
       }
     })();
   </script>
-  <main class="min-h-[calc(100dvh-3.5rem)] p-4 pb-8 bg-gradient-to-b from-neutral-900 to-neutral-950 text-slate-100 md:min-h-screen md:pl-[min(18rem,88vw)] md:pt-8 md:pr-8 md:pb-8">
+  <main class="min-h-[calc(100dvh-3.5rem)] w-full min-w-0 flex-1 bg-gradient-to-b from-neutral-900 to-neutral-950 p-4 pb-8 text-slate-100 md:min-h-0 md:px-8 md:pb-8 md:pt-8">
