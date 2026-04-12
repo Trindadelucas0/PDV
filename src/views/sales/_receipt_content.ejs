@@ -21,24 +21,40 @@
   <% if (Number(sale.desconto) > 0) { %>
     <p>Desconto: R$ <%= Number(sale.desconto).toFixed(2) %></p>
   <% } %>
-  <p>Total: R$ <%= Number(sale.total).toFixed(2) %></p>
-  <p>Forma: <%= sale.forma_pagamento %></p>
-  <% if ((sale.recebimento_status || 'quitado') === 'pendente') { %>
-    <p class="font-bold text-red-700">PAGAMENTO PENDENTE — valor a receber no caixa.</p>
+  <p class="font-bold">Total da venda: R$ <%= Number(sale.total).toFixed(2) %></p>
+  <p>Forma (cadastro): <%= sale.forma_pagamento %></p>
+  <% const recs = typeof recebimentos !== "undefined" && recebimentos ? recebimentos : []; %>
+  <% const recTotal = typeof recebidoAcumulado !== "undefined" ? Number(recebidoAcumulado) : recs.reduce((s, r) => s + Number(r.valor || 0), 0); %>
+  <% const saldo = typeof saldoEmAberto !== "undefined" ? Number(saldoEmAberto) : Number(sale.total) - recTotal; %>
+  <% if (recs.length > 0) { %>
+    <hr class="my-2" />
+    <p class="font-semibold">Recebimentos no caixa</p>
+    <% recs.forEach((r) => { %>
+      <p class="text-xs"><%= new Date(r.created_at).toLocaleString("pt-BR") %> — <%= r.forma_pagamento %> — R$ <%= Number(r.valor).toFixed(2) %></p>
+    <% }) %>
   <% } %>
-  <% if (Number(sale.pagamento_dinheiro) > 0) { %>
-    <p>Dinheiro: R$ <%= Number(sale.pagamento_dinheiro).toFixed(2) %></p>
+  <p class="mt-1"><strong>Total recebido:</strong> R$ <%= Number(recTotal).toFixed(2) %></p>
+  <% if ((sale.recebimento_status || "quitado") === "pendente" || saldo > 0.02) { %>
+    <p class="font-bold text-red-700">Saldo em aberto: R$ <%= Number(saldo).toFixed(2) %></p>
   <% } %>
-  <% if (Number(sale.pagamento_pix) > 0) { %>
-    <p>Pix: R$ <%= Number(sale.pagamento_pix).toFixed(2) %></p>
+  <% if ((sale.recebimento_status || "quitado") === "quitado" && recs.length === 0) { %>
+    <% if (Number(sale.pagamento_dinheiro) > 0) { %>
+      <p>Dinheiro: R$ <%= Number(sale.pagamento_dinheiro).toFixed(2) %></p>
+    <% } %>
+    <% if (Number(sale.pagamento_pix) > 0) { %>
+      <p>Pix: R$ <%= Number(sale.pagamento_pix).toFixed(2) %></p>
+    <% } %>
+    <% if (Number(sale.pagamento_cartao) > 0) { %>
+      <p>Cartão: R$ <%= Number(sale.pagamento_cartao).toFixed(2) %>
+        <% if (Number(sale.parcelas) > 1) { %>(<%= sale.parcelas %>x)<% } %>
+      </p>
+    <% } %>
+    <p>Valor pago: R$ <%= Number(sale.valor_pago).toFixed(2) %></p>
+    <p>Troco: R$ <%= Number(sale.troco).toFixed(2) %></p>
   <% } %>
-  <% if (Number(sale.pagamento_cartao) > 0) { %>
-    <p>Cartão: R$ <%= Number(sale.pagamento_cartao).toFixed(2) %>
-      <% if (Number(sale.parcelas) > 1) { %>(<%= sale.parcelas %>x)<% } %>
-    </p>
+  <% if ((sale.recebimento_status || "quitado") === "quitado" && recs.length > 0) { %>
+    <p class="text-xs text-slate-600 mt-1">Último recebimento — Valor pago: R$ <%= Number(sale.valor_pago).toFixed(2) %> · Troco: R$ <%= Number(sale.troco).toFixed(2) %></p>
   <% } %>
-  <p>Valor pago: R$ <%= Number(sale.valor_pago).toFixed(2) %></p>
-  <p>Troco: R$ <%= Number(sale.troco).toFixed(2) %></p>
   <hr class="my-3" />
   <p class="text-center">Obrigado pela preferência!</p>
 </div>

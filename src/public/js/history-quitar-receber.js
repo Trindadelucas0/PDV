@@ -3,7 +3,7 @@
   if (!root) return;
 
   const saleId = root.dataset.saleId;
-  const total = Number(root.dataset.total || 0);
+  const saldo = () => round2(Number(root.dataset.saldo || root.dataset.total || 0));
 
   function round2(n) {
     return Math.round(Number(n) * 100) / 100;
@@ -20,24 +20,38 @@
     el.className = `text-sm mt-2 ${isErr ? "text-red-400" : "text-emerald-400"}`;
   }
 
+  function alvoDesteRecebimento() {
+    const raw = document.getElementById("hr_valor_destinatario")?.value?.trim();
+    if (raw !== undefined && raw !== "") {
+      const v = round2(Number(raw));
+      if (v > 0) return v;
+    }
+    return saldo();
+  }
+
   function togglePainel() {
     const modo = document.getElementById("hr_modo_pagamento").value;
     document.getElementById("hr_painel_dinheiro").classList.toggle("hidden", modo !== "Dinheiro");
     document.getElementById("hr_painel_pix").classList.toggle("hidden", modo !== "Pix");
     document.getElementById("hr_painel_cartao").classList.toggle("hidden", modo !== "Cartão crédito" && modo !== "Cartão");
     document.getElementById("hr_painel_misto").classList.toggle("hidden", modo !== "Misto");
+    const showDest = ["Pix", "Cartão débito", "Cartão crédito", "Misto"].includes(modo);
+    document.getElementById("hr_painel_valor_dest").classList.toggle("hidden", !showDest);
     updateMistoHint();
   }
 
   function updateMistoHint() {
     const el = document.getElementById("hr_misto_soma_hint");
     if (!el) return;
+    const modo = document.getElementById("hr_modo_pagamento").value;
+    if (modo !== "Misto") return;
     const pd = round2(Number(document.getElementById("hr_parte_dinheiro")?.value || 0));
     const pc = round2(Number(document.getElementById("hr_parte_cartao")?.value || 0));
     const pp = round2(Number(document.getElementById("hr_parte_pix")?.value || 0));
     const soma = round2(pd + pc + pp);
-    const ok = Math.abs(soma - total) < 0.03;
-    el.textContent = `Soma: ${currency(soma)} · Total: ${currency(total)} ${ok ? "(ok)" : "(ajuste)"}`;
+    const alvo = alvoDesteRecebimento();
+    const ok = Math.abs(soma - alvo) < 0.03;
+    el.textContent = `Soma: ${currency(soma)} · Deste recebimento: ${currency(alvo)} ${ok ? "(ok)" : "(ajuste)"}`;
     el.className = `text-xs font-medium ${ok ? "text-emerald-400" : "text-amber-300"}`;
   }
 
@@ -48,14 +62,15 @@
       togglePainel();
     });
   });
-  ["hr_parte_dinheiro", "hr_parte_cartao", "hr_parte_pix", "hr_valor_recebido_dinheiro"].forEach((id) => {
+  ["hr_parte_dinheiro", "hr_parte_cartao", "hr_parte_pix", "hr_valor_recebido_dinheiro", "hr_valor_destinatario"].forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.addEventListener("input", updateMistoHint);
   });
   document.getElementById("hr_btn_restante_cartao")?.addEventListener("click", () => {
     const pd = round2(Number(document.getElementById("hr_parte_dinheiro").value || 0));
     const pp = round2(Number(document.getElementById("hr_parte_pix").value || 0));
-    document.getElementById("hr_parte_cartao").value = Math.max(0, round2(total - pd - pp)).toFixed(2);
+    const alvo = alvoDesteRecebimento();
+    document.getElementById("hr_parte_cartao").value = Math.max(0, round2(alvo - pd - pp)).toFixed(2);
     updateMistoHint();
   });
 
@@ -65,6 +80,9 @@
     const btn = document.getElementById("hr_btn_quitar");
     const modo = document.getElementById("hr_modo_pagamento").value;
     const body = { modo_pagamento: modo };
+    const vdRaw = document.getElementById("hr_valor_destinatario")?.value?.trim();
+    if (vdRaw) body.valor_destinatario = vdRaw;
+
     if (modo === "Dinheiro") {
       body.valor_recebido = document.getElementById("hr_valor_recebido").value;
     } else if (modo === "Cartão" || modo === "Cartão crédito") {
@@ -80,14 +98,15 @@
       const pd = round2(Number(body.parte_dinheiro || 0));
       const pc = round2(Number(body.parte_cartao || 0));
       const pp = round2(Number(body.parte_pix || 0));
-      if (Math.abs(pd + pc + pp - total) > 0.03) {
-        showMsg(`A soma das partes deve ser ${currency(total)}.`, true);
+      const alvo = alvoDesteRecebimento();
+      if (Math.abs(pd + pc + pp - alvo) > 0.03) {
+        showMsg(`A soma das partes deve ser ${currency(alvo)}.`, true);
         return;
       }
     }
 
     btn.disabled = true;
-    showMsg("Registrando pagamento…", false);
+    showMsg("Registrando recebimento…", false);
     try {
       const res = await fetch(`/historico/${saleId}/receber`, {
         method: "POST",

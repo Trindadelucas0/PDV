@@ -1,13 +1,14 @@
 <%- include("../partials/head", { title: "Detalhes da Venda" }) %>
 <%- include("../partials/sidebar") %>
 <% const pendente = (sale.recebimento_status || "quitado") === "pendente"; %>
+<% const recs = typeof recebimentos !== "undefined" && recebimentos ? recebimentos : []; %>
 <section class="bg-neutral-900 border border-amber-500/20 rounded-2xl p-6 mb-6">
   <h2 class="text-3xl font-bold text-amber-100">Venda #<%= sale.id %></h2>
   <p class="text-sm text-slate-300">Detalhes completos da venda e dos itens.</p>
   <% if (pendente) { %>
     <p class="mt-2 text-sm font-medium text-amber-300 border border-amber-500/40 rounded-lg px-3 py-2 inline-block bg-amber-500/10">Pagamento pendente (a receber)</p>
   <% } else if (sale.recebido_em) { %>
-    <p class="mt-2 text-xs text-slate-400">Recebido em: <%= new Date(sale.recebido_em).toLocaleString("pt-BR") %></p>
+    <p class="mt-2 text-xs text-slate-400">Quitada em: <%= new Date(sale.recebido_em).toLocaleString("pt-BR") %></p>
   <% } %>
 </section>
 <% const subtotalBruto = items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0); %>
@@ -17,26 +18,47 @@
   <p><strong class="text-amber-200">Telefone:</strong> <%= sale.telefone || "-" %></p>
   <p><strong class="text-amber-200">Email:</strong> <%= sale.email || "-" %></p>
   <p><strong class="text-amber-200">Endereco:</strong> <%= sale.endereco || "-" %></p>
-  <p class="mt-3"><strong class="text-amber-200">Forma de pagamento:</strong> <%= sale.forma_pagamento %></p>
-  <% if (Number(sale.pagamento_dinheiro) > 0) { %>
-    <p><strong class="text-amber-200">Parte em dinheiro:</strong> R$ <%= Number(sale.pagamento_dinheiro).toFixed(2) %></p>
+  <p class="mt-3"><strong class="text-amber-200">Forma (cadastro):</strong> <%= sale.forma_pagamento %></p>
+  <% if (!pendente && Number(sale.pagamento_dinheiro) > 0) { %>
+    <p><strong class="text-amber-200">Parte em dinheiro (último receb.):</strong> R$ <%= Number(sale.pagamento_dinheiro).toFixed(2) %></p>
   <% } %>
-  <% if (Number(sale.pagamento_pix) > 0) { %>
-    <p><strong class="text-amber-200">Parte no Pix:</strong> R$ <%= Number(sale.pagamento_pix).toFixed(2) %></p>
+  <% if (!pendente && Number(sale.pagamento_pix) > 0) { %>
+    <p><strong class="text-amber-200">Parte no Pix (último receb.):</strong> R$ <%= Number(sale.pagamento_pix).toFixed(2) %></p>
   <% } %>
-  <% if (Number(sale.pagamento_cartao) > 0) { %>
-    <p><strong class="text-amber-200">Parte no cartao:</strong> R$ <%= Number(sale.pagamento_cartao).toFixed(2) %>
+  <% if (!pendente && Number(sale.pagamento_cartao) > 0) { %>
+    <p><strong class="text-amber-200">Parte no cartao (último receb.):</strong> R$ <%= Number(sale.pagamento_cartao).toFixed(2) %>
       <% if (Number(sale.parcelas) > 1) { %>(<%= sale.parcelas %>x)<% } %>
     </p>
   <% } %>
-  <p><strong class="text-amber-200">Subtotal:</strong> R$ <%= Number(subtotalBruto).toFixed(2) %></p>
+  <p class="mt-3"><strong class="text-amber-200">Subtotal:</strong> R$ <%= Number(subtotalBruto).toFixed(2) %></p>
   <% if (Number(sale.desconto) > 0) { %>
     <p><strong class="text-amber-200">Desconto:</strong> R$ <%= Number(sale.desconto).toFixed(2) %></p>
   <% } %>
-  <p><strong class="text-amber-200">Total:</strong> R$ <%= Number(sale.total).toFixed(2) %></p>
-  <p><strong class="text-amber-200">Valor pago:</strong> R$ <%= Number(sale.valor_pago).toFixed(2) %> · <strong class="text-amber-200">Troco:</strong> R$ <%= Number(sale.troco).toFixed(2) %></p>
+  <p><strong class="text-amber-200">Total da venda:</strong> R$ <%= Number(sale.total).toFixed(2) %></p>
+  <p><strong class="text-amber-200">Total já recebido:</strong> R$ <%= Number(typeof recebidoAcumulado !== "undefined" ? recebidoAcumulado : 0).toFixed(2) %></p>
+  <% if (pendente) { %>
+    <p><strong class="text-amber-200">Saldo em aberto:</strong> R$ <%= Number(typeof saldoEmAberto !== "undefined" ? saldoEmAberto : sale.total).toFixed(2) %></p>
+  <% } %>
+  <% if (!pendente) { %>
+    <p><strong class="text-amber-200">Valor pago (último receb.):</strong> R$ <%= Number(sale.valor_pago).toFixed(2) %> · <strong class="text-amber-200">Troco:</strong> R$ <%= Number(sale.troco).toFixed(2) %></p>
+  <% } %>
   <a href="/vendas/recibo/<%= sale.id %>" class="inline-block mt-3 bg-brand-500 hover:bg-brand-600 text-neutral-950 px-4 py-2 rounded-lg font-semibold">Abrir recibo</a>
 </div>
+
+<% if (recs.length > 0) { %>
+<div class="bg-neutral-900 rounded-xl border border-amber-500/20 p-5 mb-4">
+  <h3 class="font-semibold text-amber-100 mb-3">Histórico de recebimentos no caixa</h3>
+  <ul class="space-y-2 text-sm text-slate-200">
+    <% recs.forEach((r) => { %>
+      <li class="flex flex-wrap justify-between gap-2 border-b border-slate-800 pb-2">
+        <span class="text-slate-400"><%= new Date(r.created_at).toLocaleString("pt-BR") %></span>
+        <span><%= r.forma_pagamento %></span>
+        <span class="text-amber-200 font-semibold">R$ <%= Number(r.valor).toFixed(2) %></span>
+      </li>
+    <% }) %>
+  </ul>
+</div>
+<% } %>
 
 <% if (pendente) { %>
 <div
@@ -44,9 +66,10 @@
   class="bg-neutral-900 rounded-xl border border-amber-500/30 p-5 mb-4"
   data-sale-id="<%= sale.id %>"
   data-total="<%= Number(sale.total).toFixed(2) %>"
+  data-saldo="<%= Number(typeof saldoEmAberto !== "undefined" ? saldoEmAberto : sale.total).toFixed(2) %>"
 >
-  <h3 class="font-semibold text-amber-100 mb-2">Registrar pagamento</h3>
-  <p class="text-sm text-slate-400 mb-4">Informe como o cliente está quitando o valor de <strong class="text-amber-200">R$ <%= Number(sale.total).toFixed(2) %></strong>. Após confirmar, a venda entra no caixa do dashboard.</p>
+  <h3 class="font-semibold text-amber-100 mb-2">Registrar recebimento</h3>
+  <p class="text-sm text-slate-400 mb-4">Cada confirmação entra no caixa do dashboard. Saldo atual: <strong class="text-amber-200">R$ <%= Number(typeof saldoEmAberto !== "undefined" ? saldoEmAberto : sale.total).toFixed(2) %></strong> (total da venda R$ <%= Number(sale.total).toFixed(2) %>).</p>
   <label class="block text-xs text-slate-400 mb-1">Forma do pagamento</label>
   <select id="hr_modo_pagamento" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-amber-500">
     <option value="Dinheiro">Dinheiro</option>
@@ -61,11 +84,15 @@
     <button type="button" class="hr-modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Cartão débito">Cartão débito</button>
     <button type="button" class="hr-modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Cartão crédito">Cartão crédito</button>
   </div>
+  <div id="hr_painel_valor_dest" class="hidden space-y-2 mb-3">
+    <label class="block text-xs text-slate-400">Valor deste recebimento (opcional; máx. saldo — vazio = saldo completo)</label>
+    <input id="hr_valor_destinatario" type="number" step="0.01" min="0" value="" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Ex.: parcial" />
+  </div>
   <div id="hr_painel_dinheiro" class="space-y-2">
     <label class="block text-xs text-slate-400">Valor recebido (dinheiro)</label>
-    <input id="hr_valor_recebido" type="number" step="0.01" min="0" value="0" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+    <input id="hr_valor_recebido" type="number" step="0.01" min="0" value="<%= Number(typeof saldoEmAberto !== "undefined" ? saldoEmAberto : sale.total).toFixed(2) %>" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
   </div>
-  <div id="hr_painel_pix" class="hidden text-sm text-slate-300 py-2">Pagamento integral via Pix (sem troco).</div>
+  <div id="hr_painel_pix" class="hidden text-sm text-slate-300 py-2">Deixe em branco o valor opcional para registrar o saldo completo; ou informe um valor menor nesse campo.</div>
   <div id="hr_painel_cartao" class="hidden space-y-2">
     <label class="block text-xs text-slate-400">Parcelas (crédito)</label>
     <select id="hr_parcelas_cartao" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
@@ -75,7 +102,7 @@
     </select>
   </div>
   <div id="hr_painel_misto" class="hidden space-y-2">
-    <p class="text-xs text-slate-400">A soma das partes deve fechar o total da venda.</p>
+    <p class="text-xs text-slate-400">A soma das partes deve fechar o valor deste recebimento (saldo ou valor informado acima).</p>
     <div>
       <label class="block text-xs text-slate-400">Parte em dinheiro (R$)</label>
       <input id="hr_parte_dinheiro" type="number" step="0.01" min="0" value="0" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
@@ -103,7 +130,7 @@
     </div>
     <p id="hr_misto_soma_hint" class="text-xs font-medium"></p>
   </div>
-  <button type="button" id="hr_btn_quitar" class="mt-4 w-full bg-brand-500 hover:bg-brand-600 text-neutral-950 font-semibold py-3 rounded-lg transition-colors disabled:opacity-60">Confirmar recebimento no caixa</button>
+  <button type="button" id="hr_btn_quitar" class="mt-4 w-full bg-brand-500 hover:bg-brand-600 text-neutral-950 font-semibold py-3 rounded-lg transition-colors disabled:opacity-60">Registrar recebimento no caixa</button>
   <p id="quitar_msg" class="text-sm mt-2 min-h-[1.25rem]"></p>
 </div>
 <% } %>

@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { EPS, round2 } = require("../utils/salePayment");
 
 function insufficientStockError(nomeProduto, disponivel, solicitado) {
   const err = new Error(
@@ -81,6 +82,27 @@ async function createSaleWithItems({
     );
     const sale = saleResult.rows[0];
 
+    if (status !== "pendente") {
+      await client.query(
+        `INSERT INTO venda_recebimentos (
+           venda_id, valor, forma_pagamento, troco, parcelas,
+           pagamento_dinheiro, pagamento_cartao, pagamento_pix, created_at
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          sale.id,
+          total,
+          formaPagamento,
+          troco,
+          parcelas,
+          pagamentoDinheiro,
+          pagamentoCartao,
+          pagamentoPix,
+          recebidoSql
+        ]
+      );
+    }
+
     for (const item of items) {
       await client.query(
         `INSERT INTO venda_itens (venda_id, produto_id, quantidade, preco, custo, subtotal)
@@ -101,7 +123,27 @@ async function createSaleWithItems({
   }
 }
 
-async function settleSalePayment(
+async function listRecebimentosBySaleId(vendaId) {
+  const res = await pool.query(
+    `SELECT * FROM venda_recebimentos WHERE venda_id = $1 ORDER BY created_at ASC, id ASC`,
+    [vendaId]
+  );
+  return res.rows;
+}
+
+async function sumRecebimentosBySaleId(vendaId, client = pool) {
+  const res = await client.query(
+    `SELECT COALESCE(SUM(valor), 0) AS s FROM venda_recebimentos WHERE venda_id = $1`,
+    [vendaId]
+  );
+  return round2(Number(res.rows[0].s));
+}
+
+/**
+ * Registra um recebimento parcial ou final; insere em venda_recebimentos e
+ * marca quitado quando o acumulado cobrir o total.
+ */
+async function registrarRecebimentoVenda(
   saleId,
   {
     formaPagamento,
@@ -110,9 +152,11 @@ async function settleSalePayment(
     parcelas,
     pagamentoDinheiro,
     pagamentoCartao,
-    pagamentoPix
+    pagamentoPix,
+    valorAbate
   }
 ) {
+  const abate = round2(Number(valorAbate));
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -129,30 +173,69 @@ async function settleSalePayment(
       err.statusCode = 409;
       throw err;
     }
+    const total = round2(Number(row.total));
+    const acum = await sumRecebimentosBySaleId(saleId, client);
+    const saldo = round2(total - acum);
+    if (abate < EPS) {
+      const err = new Error("Valor do recebimento inválido.");
+      err.statusCode = 400;
+      throw err;
+    }
+    if (abate > saldo + EPS) {
+      const err = new Error(`O valor excede o saldo (R$ ${saldo.toFixed(2)}).`);
+      err.statusCode = 400;
+      throw err;
+    }
+
     await client.query(
-      `UPDATE vendas SET
-         forma_pagamento = $1,
-         valor_pago = $2,
-         troco = $3,
-         parcelas = $4,
-         pagamento_dinheiro = $5,
-         pagamento_cartao = $6,
-         pagamento_pix = $7,
-         recebimento_status = 'quitado',
-         recebido_em = NOW()
-       WHERE id = $8`,
+      `INSERT INTO venda_recebimentos (
+         venda_id, valor, forma_pagamento, troco, parcelas,
+         pagamento_dinheiro, pagamento_cartao, pagamento_pix
+       )
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
+        saleId,
+        abate,
         formaPagamento,
-        valorPago,
         troco,
         parcelas,
         pagamentoDinheiro,
         pagamentoCartao,
-        pagamentoPix,
-        saleId
+        pagamentoPix
       ]
     );
+
+    const novoAcum = round2(acum + abate);
+    const quitou = novoAcum >= total - EPS;
+
+    if (quitou) {
+      await client.query(
+        `UPDATE vendas SET
+           forma_pagamento = $1,
+           valor_pago = $2,
+           troco = $3,
+           parcelas = $4,
+           pagamento_dinheiro = $5,
+           pagamento_cartao = $6,
+           pagamento_pix = $7,
+           recebimento_status = 'quitado',
+           recebido_em = NOW()
+         WHERE id = $8`,
+        [
+          formaPagamento,
+          valorPago,
+          troco,
+          parcelas,
+          pagamentoDinheiro,
+          pagamentoCartao,
+          pagamentoPix,
+          saleId
+        ]
+      );
+    }
+
     await client.query("COMMIT");
+    return { quitado: quitou, saldoRestante: quitou ? 0 : round2(total - novoAcum) };
   } catch (e) {
     await client.query("ROLLBACK");
     throw e;
@@ -207,27 +290,87 @@ async function findById(id) {
     )
   ).rows;
 
-  return { sale, items };
+  const recebimentos = await listRecebimentosBySaleId(id);
+
+  return { sale, items, recebimentos };
+}
+
+async function listContasAReceber() {
+  const res = await pool.query(
+    `SELECT v.*, c.nome AS cliente_nome, c.cpf AS cliente_cpf, c.telefone,
+      COALESCE((
+        SELECT SUM(r.valor) FROM venda_recebimentos r WHERE r.venda_id = v.id
+      ), 0) AS recebido_acumulado
+     FROM vendas v
+     LEFT JOIN clientes c ON c.id = v.cliente_id
+     WHERE COALESCE(v.recebimento_status, 'quitado') = 'pendente'
+     ORDER BY v.created_at DESC`
+  );
+  return res.rows;
+}
+
+function mergeChartByDay(startDate, endDate, caixaRows, lucroRows) {
+  const dayKey = (d) => {
+    if (!d) return "";
+    if (d instanceof Date) return d.toISOString().slice(0, 10);
+    const s = String(d);
+    return s.length >= 10 ? s.slice(0, 10) : s;
+  };
+  const cMap = new Map(caixaRows.map((r) => [dayKey(r.dia), r]));
+  const lMap = new Map(lucroRows.map((r) => [dayKey(r.dia), r]));
+  const out = [];
+  const cur = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+  while (cur <= end) {
+    const dia = cur.toISOString().slice(0, 10);
+    const cr = cMap.get(dia);
+    const lr = lMap.get(dia);
+    out.push({
+      dia,
+      total: Number(cr?.total || 0),
+      lucro: Number(lr?.lucro || 0),
+      recebimentos: Number(cr?.recebimentos || 0),
+      vendas_quitadas: Number(lr?.vendas_quitadas || 0)
+    });
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
 }
 
 async function dashboardStats(startDate, endDate) {
-  const dateExpr = `DATE(COALESCE(v.recebido_em, v.created_at))`;
-  const caixaFilter = `COALESCE(v.recebimento_status, 'quitado') = 'quitado'`;
-
-  const totals = (
+  const caixaAgg = (
     await pool.query(
       `SELECT
-         COALESCE(SUM(v.total), 0) AS total_periodo,
-         COALESCE(SUM(v.lucro), 0) AS lucro_periodo,
-         COUNT(*) AS qtd_vendas
-       FROM vendas v
-       WHERE ${dateExpr} BETWEEN $1 AND $2 AND ${caixaFilter}`,
+         COALESCE(SUM(vr.valor), 0) AS total_periodo,
+         COUNT(*)::int AS qtd_recebimentos
+       FROM venda_recebimentos vr
+       WHERE DATE(vr.created_at) BETWEEN $1::date AND $2::date`,
       [startDate, endDate]
     )
   ).rows[0];
 
+  const lucroAgg = (
+    await pool.query(
+      `SELECT
+         COALESCE(SUM(v.lucro), 0) AS lucro_periodo,
+         COUNT(*)::int AS qtd_vendas_quitadas
+       FROM vendas v
+       WHERE COALESCE(v.recebimento_status, 'quitado') = 'quitado'
+         AND v.recebido_em IS NOT NULL
+         AND DATE(v.recebido_em) BETWEEN $1::date AND $2::date`,
+      [startDate, endDate]
+    )
+  ).rows[0];
+
+  const totals = {
+    total_periodo: Number(caixaAgg.total_periodo),
+    lucro_periodo: Number(lucroAgg.lucro_periodo),
+    qtd_recebimentos: Number(caixaAgg.qtd_recebimentos),
+    qtd_vendas_quitadas: Number(lucroAgg.qtd_vendas_quitadas)
+  };
+
   const ticketMedio =
-    Number(totals.qtd_vendas) > 0 ? Number(totals.total_periodo) / Number(totals.qtd_vendas) : 0;
+    totals.qtd_recebimentos > 0 ? round2(totals.total_periodo / totals.qtd_recebimentos) : 0;
 
   const stockOverview = (
     await pool.query(
@@ -240,32 +383,50 @@ async function dashboardStats(startDate, endDate) {
   ).rows[0];
 
   const lowStock = (await pool.query("SELECT * FROM produtos WHERE estoque <= 5 ORDER BY estoque ASC LIMIT 10")).rows;
+
   const latestSales = (
     await pool.query(
-      `SELECT v.id, v.total, v.forma_pagamento, v.created_at, v.recebimento_status, c.nome AS cliente_nome
-       FROM vendas v
+      `SELECT vr.id AS recebimento_id, vr.venda_id, vr.valor, vr.forma_pagamento, vr.created_at,
+              v.total AS venda_total, v.recebimento_status, c.nome AS cliente_nome
+       FROM venda_recebimentos vr
+       JOIN vendas v ON v.id = vr.venda_id
        LEFT JOIN clientes c ON c.id = v.cliente_id
-       WHERE ${dateExpr} BETWEEN $1 AND $2 AND ${caixaFilter}
-       ORDER BY COALESCE(v.recebido_em, v.created_at) DESC
+       WHERE DATE(vr.created_at) BETWEEN $1::date AND $2::date
+       ORDER BY vr.created_at DESC, vr.id DESC
        LIMIT 10`,
       [startDate, endDate]
     )
   ).rows;
 
-  const chartRows = (
+  const caixaByDay = (
     await pool.query(
-      `SELECT
-         ${dateExpr} AS dia,
-         COALESCE(SUM(v.total), 0) AS total,
-         COALESCE(SUM(v.lucro), 0) AS lucro,
-         COUNT(*) AS vendas
-       FROM vendas v
-       WHERE ${dateExpr} BETWEEN $1 AND $2 AND ${caixaFilter}
-       GROUP BY ${dateExpr}
-       ORDER BY ${dateExpr}`,
+      `SELECT DATE(vr.created_at)::text AS dia,
+         COALESCE(SUM(vr.valor), 0) AS total,
+         COUNT(*)::int AS recebimentos
+       FROM venda_recebimentos vr
+       WHERE DATE(vr.created_at) BETWEEN $1::date AND $2::date
+       GROUP BY DATE(vr.created_at)
+       ORDER BY DATE(vr.created_at)`,
       [startDate, endDate]
     )
   ).rows;
+
+  const lucroByDay = (
+    await pool.query(
+      `SELECT DATE(v.recebido_em)::text AS dia,
+         COALESCE(SUM(v.lucro), 0) AS lucro,
+         COUNT(*)::int AS vendas_quitadas
+       FROM vendas v
+       WHERE COALESCE(v.recebimento_status, 'quitado') = 'quitado'
+         AND v.recebido_em IS NOT NULL
+         AND DATE(v.recebido_em) BETWEEN $1::date AND $2::date
+       GROUP BY DATE(v.recebido_em)
+       ORDER BY DATE(v.recebido_em)`,
+      [startDate, endDate]
+    )
+  ).rows;
+
+  const chartRows = mergeChartByDay(startDate, endDate, caixaByDay, lucroByDay);
 
   return { totals, ticketMedio, stockOverview, lowStock, latestSales, chartRows };
 }
@@ -273,8 +434,11 @@ async function dashboardStats(startDate, endDate) {
 module.exports = {
   createSaleWithItems,
   insufficientStockError,
-  settleSalePayment,
+  listRecebimentosBySaleId,
+  sumRecebimentosBySaleId,
+  registrarRecebimentoVenda,
   listByDate,
   findById,
+  listContasAReceber,
   dashboardStats
 };

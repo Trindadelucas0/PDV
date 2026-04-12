@@ -156,6 +156,13 @@ async function getLastSessionSale(req, res) {
   });
 }
 
+function receiptFinanceiro(data) {
+  const recebimentos = data.recebimentos || [];
+  const recebidoAcumulado = round2(recebimentos.reduce((s, r) => s + Number(r.valor || 0), 0));
+  const saldoEmAberto = round2(Number(data.sale.total) - recebidoAcumulado);
+  return { recebimentos, recebidoAcumulado, saldoEmAberto };
+}
+
 async function receipt(req, res) {
   const data = await saleModel.findById(req.params.id);
   if (!data) return res.status(404).send("Venda não encontrada.");
@@ -164,16 +171,19 @@ async function receipt(req, res) {
     phone: process.env.STORE_PHONE || "",
     address: process.env.STORE_ADDRESS || ""
   };
+  const fin = receiptFinanceiro(data);
   return res.render("sales/receipt", {
     sale: data.sale,
     items: data.items,
-    store
+    store,
+    ...fin
   });
 }
 
 async function receiptFragment(req, res) {
   const data = await saleModel.findById(req.params.id);
   if (!data) return res.status(404).send("Venda não encontrada.");
+  const fin = receiptFinanceiro(data);
   return res.render("sales/_receipt_content", {
     sale: data.sale,
     items: data.items,
@@ -181,7 +191,8 @@ async function receiptFragment(req, res) {
       name: process.env.STORE_NAME || "Controle PDV",
       phone: process.env.STORE_PHONE || "",
       address: process.env.STORE_ADDRESS || ""
-    }
+    },
+    ...fin
   });
 }
 
@@ -189,6 +200,8 @@ async function receiptPdf(req, res) {
   const data = await saleModel.findById(req.params.id);
   if (!data) return res.status(404).send("Venda não encontrada.");
   const { sale, items } = data;
+  const fin = receiptFinanceiro(data);
+  const { recebimentos, recebidoAcumulado, saldoEmAberto } = fin;
   const store = {
     name: process.env.STORE_NAME || "Controle PDV",
     phone: process.env.STORE_PHONE || "",
@@ -227,23 +240,36 @@ async function receiptPdf(req, res) {
     doc.text(`Desconto: R$ ${desconto.toFixed(2)}`);
   }
   doc.font("Helvetica-Bold").text(`Total: R$ ${Number(sale.total).toFixed(2)}`);
-  doc.font("Helvetica").text(`Forma: ${sale.forma_pagamento}`);
+  doc.font("Helvetica").text(`Forma (venda): ${sale.forma_pagamento}`);
+  if (recebimentos.length > 0) {
+    doc.moveDown(0.4);
+    doc.text("Recebimentos registrados:", { underline: true });
+    recebimentos.forEach((r) => {
+      const dt = new Date(r.created_at).toLocaleString("pt-BR");
+      doc.text(`  ${dt} — ${r.forma_pagamento} — R$ ${Number(r.valor).toFixed(2)}`);
+    });
+  }
+  doc.moveDown(0.3);
+  doc.text(`Total recebido no caixa: R$ ${recebidoAcumulado.toFixed(2)}`);
   if (pendente) {
-    doc.font("Helvetica-Bold").fillColor("red").text("PAGAMENTO PENDENTE — valor ainda nao recebido no caixa.", { underline: false });
+    doc.text(`Saldo em aberto: R$ ${saldoEmAberto.toFixed(2)}`);
+    doc.font("Helvetica-Bold").fillColor("red").text("PAGAMENTO PARCIAL OU PENDENTE.", { underline: false });
     doc.fillColor("black");
   }
-  if (Number(sale.pagamento_dinheiro) > 0) {
-    doc.text(`Dinheiro: R$ ${Number(sale.pagamento_dinheiro).toFixed(2)}`);
+  if (!pendente) {
+    if (Number(sale.pagamento_dinheiro) > 0) {
+      doc.text(`Ultimo pagamento — Dinheiro: R$ ${Number(sale.pagamento_dinheiro).toFixed(2)}`);
+    }
+    if (Number(sale.pagamento_pix) > 0) {
+      doc.text(`Ultimo pagamento — Pix: R$ ${Number(sale.pagamento_pix).toFixed(2)}`);
+    }
+    if (Number(sale.pagamento_cartao) > 0) {
+      const parcelasTxt = Number(sale.parcelas) > 1 ? ` (${sale.parcelas}x)` : "";
+      doc.text(`Ultimo pagamento — Cartao: R$ ${Number(sale.pagamento_cartao).toFixed(2)}${parcelasTxt}`);
+    }
+    doc.text(`Valor pago (ultimo recebimento): R$ ${Number(sale.valor_pago).toFixed(2)}`);
+    doc.text(`Troco (ultimo recebimento): R$ ${Number(sale.troco).toFixed(2)}`);
   }
-  if (Number(sale.pagamento_pix) > 0) {
-    doc.text(`Pix: R$ ${Number(sale.pagamento_pix).toFixed(2)}`);
-  }
-  if (Number(sale.pagamento_cartao) > 0) {
-    const parcelasTxt = Number(sale.parcelas) > 1 ? ` (${sale.parcelas}x)` : "";
-    doc.text(`Cartão: R$ ${Number(sale.pagamento_cartao).toFixed(2)}${parcelasTxt}`);
-  }
-  doc.text(`Valor pago: R$ ${Number(sale.valor_pago).toFixed(2)}`);
-  doc.text(`Troco: R$ ${Number(sale.troco).toFixed(2)}`);
   doc.moveDown(1);
   doc.text("Obrigado pela preferência!", { align: "center" });
   doc.end();

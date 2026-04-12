@@ -1,6 +1,6 @@
 <%- include("../partials/head", { title: "Recibo" }) %>
 <div class="max-w-sm mx-auto mt-6">
-  <%- include("./_receipt_content", { sale, items, store }) %>
+  <%- include("./_receipt_content", { sale, items, store, recebimentos, recebidoAcumulado, saldoEmAberto }) %>
   <button type="button" class="mt-4 w-full bg-slate-900 text-white py-2 rounded print:hidden" onclick="window.print()">Imprimir</button>
 </div>
 </body>

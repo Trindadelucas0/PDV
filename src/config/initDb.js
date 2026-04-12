@@ -85,6 +85,36 @@ async function initDb() {
   await pool.query("CREATE INDEX IF NOT EXISTS idx_vendas_recebimento ON vendas (recebimento_status);");
   await pool.query("CREATE INDEX IF NOT EXISTS idx_vendas_recebido_em ON vendas (recebido_em);");
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS venda_recebimentos (
+      id SERIAL PRIMARY KEY,
+      venda_id INTEGER NOT NULL REFERENCES vendas(id) ON DELETE CASCADE,
+      valor NUMERIC(10,2) NOT NULL,
+      forma_pagamento VARCHAR(120) NOT NULL,
+      troco NUMERIC(10,2) NOT NULL DEFAULT 0,
+      parcelas INTEGER NOT NULL DEFAULT 1,
+      pagamento_dinheiro NUMERIC(10,2) NOT NULL DEFAULT 0,
+      pagamento_cartao NUMERIC(10,2) NOT NULL DEFAULT 0,
+      pagamento_pix NUMERIC(10,2) NOT NULL DEFAULT 0,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_venda_recebimentos_venda ON venda_recebimentos (venda_id);");
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_venda_recebimentos_data ON venda_recebimentos (created_at);");
+
+  await pool.query(`
+    INSERT INTO venda_recebimentos (
+      venda_id, valor, forma_pagamento, troco, parcelas,
+      pagamento_dinheiro, pagamento_cartao, pagamento_pix, created_at
+    )
+    SELECT v.id, v.total, v.forma_pagamento, v.troco, v.parcelas,
+      v.pagamento_dinheiro, v.pagamento_cartao, v.pagamento_pix,
+      COALESCE(v.recebido_em, v.created_at)
+    FROM vendas v
+    WHERE COALESCE(v.recebimento_status, 'quitado') = 'quitado'
+      AND NOT EXISTS (SELECT 1 FROM venda_recebimentos r WHERE r.venda_id = v.id);
+  `);
+
   await pool.query("CREATE INDEX IF NOT EXISTS idx_produtos_nome ON produtos (nome);");
   await pool.query("CREATE INDEX IF NOT EXISTS idx_produtos_codigo ON produtos (codigo_barras);");
   await pool.query("CREATE INDEX IF NOT EXISTS idx_vendas_data ON vendas (created_at);");

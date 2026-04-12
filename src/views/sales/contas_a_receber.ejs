@@ -1,0 +1,47 @@
+<%- include("../partials/head", { title: "Contas a receber" }) %>
+<%- include("../partials/sidebar") %>
+<section class="bg-neutral-900 border border-amber-500/20 rounded-2xl p-6 mb-6">
+  <h2 class="text-3xl font-bold text-amber-100 mb-1">Contas a receber</h2>
+  <p class="text-sm text-slate-300">Vendas em aberto (a receber) com saldo após recebimentos parciais.</p>
+  <p class="mt-3 text-sm text-amber-200/90">
+    Soma dos saldos em aberto:
+    <strong class="text-amber-100">R$ <%= Number(somaSaldos || 0).toFixed(2) %></strong>
+    · <%= contas.length %> conta(s)
+  </p>
+</section>
+<div class="bg-neutral-900 rounded-xl border border-amber-500/20 overflow-auto mb-4">
+  <% if (!contas.length) { %>
+    <p class="p-6 text-slate-400 text-sm">Nenhuma conta pendente. Todas as vendas a receber estão quitadas.</p>
+  <% } else { %>
+  <table class="w-full text-sm">
+    <thead class="bg-neutral-950 text-amber-100">
+      <tr>
+        <th class="p-3 text-left">Venda</th>
+        <th class="p-3 text-left">Cliente</th>
+        <th class="p-3 text-right">Total</th>
+        <th class="p-3 text-right">Recebido</th>
+        <th class="p-3 text-right">Saldo</th>
+        <th class="p-3 text-left">Data venda</th>
+        <th class="p-3 text-center">Ação</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% contas.forEach((c) => { %>
+      <% const rec = Number(c.recebido_acumulado || 0); %>
+      <% const saldo = Number(c.total) - rec; %>
+      <tr class="border-t border-slate-800 text-slate-200">
+        <td class="p-3 font-mono">#<%= c.id %></td>
+        <td class="p-3"><%= c.cliente_nome || "—" %></td>
+        <td class="p-3 text-right text-amber-200/90">R$ <%= Number(c.total).toFixed(2) %></td>
+        <td class="p-3 text-right text-slate-300">R$ <%= rec.toFixed(2) %></td>
+        <td class="p-3 text-right font-semibold text-amber-300">R$ <%= saldo.toFixed(2) %></td>
+        <td class="p-3 text-slate-400"><%= new Date(c.created_at).toLocaleString("pt-BR") %></td>
+        <td class="p-3 text-center"><a class="text-amber-300 hover:text-amber-200 font-medium" href="/historico/<%= c.id %>">Receber / detalhes</a></td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+<p class="text-xs text-slate-500"><a href="/historico" class="text-amber-400 hover:underline">Voltar ao histórico geral</a></p>
+<%- include("../partials/footer") %>
