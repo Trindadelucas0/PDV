@@ -3,16 +3,9 @@ const PDFDocument = require("pdfkit");
 const productModel = require("../models/productModel");
 const customerModel = require("../models/customerModel");
 const saleModel = require("../models/saleModel");
+const { round2, computePaidBreakdown } = require("../utils/salePayment");
 
 const EPS = 0.02;
-function round2(n) {
-  return Math.round(Number(n) * 100) / 100;
-}
-function clampParcelas(n) {
-  const p = parseInt(n, 10);
-  if (Number.isNaN(p)) return 1;
-  return Math.min(12, Math.max(1, p));
-}
 
 async function index(req, res) {
   return res.render("sales/index");
@@ -63,58 +56,50 @@ async function finalize(req, res) {
   const lucro = subtotalBruto > 0 ? round2(lucroBruto * (total / subtotalBruto)) : 0;
 
   const modo = modo_pagamento || forma_pagamento || "Dinheiro";
-  const isCartaoCredito = modo === "Cartão" || modo === "Cartão crédito";
-  const isCartaoDebito = modo === "Cartão débito";
-  let formaPagamentoStr = modo;
+
+  let formaPagamentoStr;
   let valorPagoNum = 0;
   let troco = 0;
   let parcelas = 1;
   let pd = 0;
   let pc = 0;
   let pp = 0;
+  let recebimentoStatus = "quitado";
+  let recebidoEm = null;
 
-  if (modo === "Dinheiro") {
-    pd = total;
-    valorPagoNum = round2(Number(req.body.valor_recebido ?? req.body.valor_pago ?? 0));
-    troco = Math.max(0, round2(valorPagoNum - total));
-    formaPagamentoStr = "Dinheiro";
-  } else if (modo === "Pix") {
-    pp = total;
-    valorPagoNum = total;
+  if (modo === "A receber") {
+    const nome = String(cliente?.nome || "").trim();
+    const tel = String(cliente?.telefone || "").replace(/\D/g, "");
+    const cpfDigits = String(cliente?.cpf || "").replace(/\D/g, "");
+    if (nome.length < 2 || nome.toLowerCase() === "consumidor final") {
+      return res.status(400).json({ error: "Informe o nome do cliente para venda a receber." });
+    }
+    if (tel.length < 8 && cpfDigits.length < 11) {
+      return res.status(400).json({ error: "Informe telefone ou CPF válido do cliente para venda a receber." });
+    }
+    formaPagamentoStr = "A receber";
+    valorPagoNum = 0;
     troco = 0;
-    formaPagamentoStr = "Pix";
-  } else if (isCartaoCredito) {
-    pc = total;
-    parcelas = clampParcelas(req.body.parcelas);
-    valorPagoNum = total;
-    troco = 0;
-    formaPagamentoStr = modo === "Cartão crédito" ? "Cartão crédito" : "Cartão";
-  } else if (isCartaoDebito) {
-    pc = total;
     parcelas = 1;
-    valorPagoNum = total;
-    troco = 0;
-    formaPagamentoStr = "Cartão débito";
-  } else if (modo === "Misto") {
-    pd = round2(Number(req.body.parte_dinheiro || 0));
-    pc = round2(Number(req.body.parte_cartao || 0));
-    pp = round2(Number(req.body.parte_pix || 0));
-    parcelas = clampParcelas(req.body.parcelas);
-    const soma = round2(pd + pc + pp);
-    if (Math.abs(soma - total) > EPS) {
-      return res.status(400).json({
-        error: `A soma (Dinheiro + Cartão + Pix) deve ser R$ ${total.toFixed(2)}. Atual: R$ ${soma.toFixed(2)}.`
-      });
-    }
-    const recebidoDinheiro = round2(Number(req.body.valor_recebido_dinheiro ?? pd));
-    if (recebidoDinheiro + EPS < pd) {
-      return res.status(400).json({ error: "Valor recebido em dinheiro não cobre a parte em dinheiro." });
-    }
-    troco = Math.max(0, round2(recebidoDinheiro - pd));
-    valorPagoNum = round2(recebidoDinheiro + pc + pp);
-    formaPagamentoStr = "Misto";
+    pd = 0;
+    pc = 0;
+    pp = 0;
+    recebimentoStatus = "pendente";
+    recebidoEm = null;
   } else {
-    return res.status(400).json({ error: "Forma de pagamento inválida." });
+    const b = computePaidBreakdown(modo, req.body, total);
+    if (!b.ok) {
+      return res.status(400).json({ error: b.error });
+    }
+    formaPagamentoStr = b.formaPagamentoStr;
+    valorPagoNum = b.valorPagoNum;
+    troco = b.troco;
+    parcelas = b.parcelas;
+    pd = b.pagamentoDinheiro;
+    pc = b.pagamentoCartao;
+    pp = b.pagamentoPix;
+    recebimentoStatus = "quitado";
+    recebidoEm = new Date();
   }
 
   try {
@@ -131,6 +116,8 @@ async function finalize(req, res) {
       pagamentoDinheiro: pd,
       pagamentoCartao: pc,
       pagamentoPix: pp,
+      recebimentoStatus,
+      recebidoEm,
       items: parsedItems
     });
 
@@ -151,7 +138,22 @@ async function getLastSessionSale(req, res) {
   if (!saleId) {
     return res.status(404).json({ error: "Nenhuma venda nesta sessão ainda." });
   }
-  return res.json({ saleId });
+  const data = await saleModel.findById(saleId);
+  if (!data) {
+    return res.status(404).json({ error: "Venda da sessão não encontrada." });
+  }
+  const { sale } = data;
+  return res.json({
+    saleId,
+    resumo: {
+      id: sale.id,
+      total: Number(sale.total),
+      createdAt: sale.created_at,
+      clienteNome: sale.cliente_nome || "Consumidor final",
+      formaPagamento: sale.forma_pagamento,
+      recebimentoStatus: sale.recebimento_status || "quitado"
+    }
+  });
 }
 
 async function receipt(req, res) {
@@ -194,6 +196,7 @@ async function receiptPdf(req, res) {
   };
   const subtotal = round2(items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0));
   const desconto = round2(Number(sale.desconto || 0));
+  const pendente = (sale.recebimento_status || "quitado") === "pendente";
 
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="recibo-${sale.id}.pdf"`);
@@ -225,6 +228,10 @@ async function receiptPdf(req, res) {
   }
   doc.font("Helvetica-Bold").text(`Total: R$ ${Number(sale.total).toFixed(2)}`);
   doc.font("Helvetica").text(`Forma: ${sale.forma_pagamento}`);
+  if (pendente) {
+    doc.font("Helvetica-Bold").fillColor("red").text("PAGAMENTO PENDENTE — valor ainda nao recebido no caixa.", { underline: false });
+    doc.fillColor("black");
+  }
   if (Number(sale.pagamento_dinheiro) > 0) {
     doc.text(`Dinheiro: R$ ${Number(sale.pagamento_dinheiro).toFixed(2)}`);
   }

@@ -7,13 +7,16 @@
       <h2 class="text-3xl font-bold text-amber-100 mb-1">Vendas / Caixa</h2>
       <p class="text-sm text-slate-300">Digite nome ou código de barras e finalize com segurança.</p>
     </div>
-    <button
-      type="button"
-      id="print_last_sale_btn"
-      class="bg-amber-500 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed text-neutral-950 px-4 py-2 rounded-lg font-semibold transition-colors"
-    >
-      Imprimir última venda
-    </button>
+    <div class="flex flex-col items-end gap-2 text-right max-w-md">
+      <button
+        type="button"
+        id="print_last_sale_btn"
+        class="bg-amber-500 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed text-neutral-950 px-4 py-2 rounded-lg font-semibold transition-colors"
+      >
+        Imprimir última venda
+      </button>
+      <p id="ultima_venda_resumo" class="text-xs text-slate-400 leading-snug"></p>
+    </div>
   </div>
 </section>
 <div id="toast_root" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm"></div>
@@ -66,12 +69,18 @@
         <option value="Cartão débito">Cartão débito</option>
         <option value="Cartão crédito">Cartão crédito</option>
         <option value="Misto">Misto (dinheiro + cartão / pix)</option>
+        <option value="A receber">A receber (pagar depois)</option>
       </select>
       <div class="grid grid-cols-2 gap-2 mb-3">
         <button type="button" class="modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Dinheiro">Dinheiro</button>
         <button type="button" class="modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Pix">Pix</button>
         <button type="button" class="modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Cartão débito">Cartão débito</button>
         <button type="button" class="modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Cartão crédito">Cartão crédito</button>
+        <button type="button" class="modo-rapido col-span-2 bg-neutral-950 border border-amber-600/40 text-amber-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/60" data-modo="A receber">A receber</button>
+      </div>
+
+      <div id="painel_a_receber" class="hidden text-sm text-amber-200/90 bg-amber-500/10 border border-amber-500/25 rounded-lg px-3 py-2 mb-2">
+        Cliente paga depois; a venda fica pendente até registrar o recebimento no histórico. Informe <strong>nome</strong> e <strong>telefone ou CPF</strong> do cliente.
       </div>
 
       <div id="painel_dinheiro" class="space-y-2">
@@ -132,16 +141,17 @@
       <p class="text-slate-300">Total: <strong id="total" class="text-amber-300 text-lg">R$ 0.00</strong></p>
       <p class="text-slate-300">Troco: <strong id="troco" class="text-amber-200">R$ 0.00</strong></p>
     </div>
-    <button type="button" id="finishBtn" class="w-full bg-brand-500 hover:bg-brand-600 text-neutral-950 font-semibold py-3 rounded-lg transition-colors">Finalizar venda</button>
+    <button type="button" id="finishBtn" class="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-60 disabled:cursor-not-allowed text-neutral-950 font-semibold py-3 rounded-lg transition-colors">Finalizar venda</button>
   </section>
 </div>
 <div id="receipt_modal" class="hidden fixed inset-0 z-[80] bg-neutral-950/80 p-4 overflow-y-auto items-center justify-center">
   <div class="w-full max-w-md my-auto bg-neutral-900 border border-amber-500/30 rounded-xl p-4 shadow-2xl">
     <p class="text-amber-100 font-semibold mb-1">Venda concluída</p>
-    <p class="text-slate-300 text-sm mb-3">Abrir o recibo em outra guia para imprimir ou conferir.</p>
+    <p class="text-slate-300 text-sm mb-3">Você pode abrir o recibo em outra guia ou baixar o PDF direto.</p>
     <div id="receipt_modal_content" class="print-area max-h-[50vh] overflow-auto rounded border border-slate-700 bg-white p-2"></div>
-    <div class="print:hidden mt-3 flex justify-end gap-2">
+    <div class="print:hidden mt-3 flex flex-wrap justify-end gap-2">
       <button type="button" id="receipt_yes_btn" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-60 disabled:cursor-not-allowed text-neutral-950 px-4 py-2 rounded-lg font-semibold">Abrir recibo</button>
+      <button type="button" id="receipt_download_btn" class="bg-amber-500 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed text-neutral-950 px-4 py-2 rounded-lg font-semibold">Baixar PDF</button>
       <button type="button" id="receipt_no_btn" class="bg-neutral-800 hover:bg-neutral-700 text-slate-100 px-4 py-2 rounded-lg">Não</button>
     </div>
   </div>

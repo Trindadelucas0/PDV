@@ -73,6 +73,17 @@ async function initDb() {
   await pool.query(`
     ALTER TABLE vendas ALTER COLUMN forma_pagamento TYPE VARCHAR(120);
   `);
+  await pool.query(`
+    ALTER TABLE vendas ADD COLUMN IF NOT EXISTS recebimento_status VARCHAR(20) NOT NULL DEFAULT 'quitado';
+  `);
+  await pool.query(`
+    ALTER TABLE vendas ADD COLUMN IF NOT EXISTS recebido_em TIMESTAMP;
+  `);
+  await pool.query(`
+    UPDATE vendas SET recebimento_status = 'quitado' WHERE recebimento_status IS NULL OR recebimento_status = '';
+  `);
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_vendas_recebimento ON vendas (recebimento_status);");
+  await pool.query("CREATE INDEX IF NOT EXISTS idx_vendas_recebido_em ON vendas (recebido_em);");
 
   await pool.query("CREATE INDEX IF NOT EXISTS idx_produtos_nome ON produtos (nome);");
   await pool.query("CREATE INDEX IF NOT EXISTS idx_produtos_codigo ON produtos (codigo_barras);");

@@ -4,7 +4,7 @@
   <h2 class="text-3xl font-bold text-amber-100 mb-1">Historico de Vendas</h2>
   <p class="text-sm text-slate-300">Filtre por periodo e abra os detalhes de cada venda.</p>
 </section>
-<form class="bg-neutral-900 p-4 rounded-xl border border-amber-500/20 mb-4 flex flex-wrap gap-3 items-end">
+<form method="get" class="bg-neutral-900 p-4 rounded-xl border border-amber-500/20 mb-4 flex flex-wrap gap-4 items-end">
   <div>
     <label class="text-sm text-slate-300">De</label>
     <input type="date" name="startDate" value="<%= startDate || '' %>" class="block bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
@@ -13,18 +13,30 @@
     <label class="text-sm text-slate-300">Até</label>
     <input type="date" name="endDate" value="<%= endDate || '' %>" class="block bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
   </div>
+  <label class="flex items-center gap-2 text-sm text-slate-300 cursor-pointer pb-2">
+    <input type="checkbox" name="pendente" value="1" class="rounded border-slate-600 bg-neutral-950 text-amber-500 focus:ring-amber-500" <%= typeof somentePendente !== 'undefined' && somentePendente ? 'checked' : '' %>>
+    Só pendentes a receber
+  </label>
   <button class="bg-brand-500 hover:bg-brand-600 text-neutral-950 px-4 py-2 rounded-lg font-semibold">Filtrar</button>
 </form>
 <div class="bg-neutral-900 rounded-xl border border-amber-500/20 overflow-auto">
   <table class="w-full text-sm">
-    <thead class="bg-neutral-950 text-amber-100"><tr><th class="p-3">ID</th><th class="p-3">Cliente</th><th class="p-3">Total</th><th class="p-3">Pagamento</th><th class="p-3">Data</th><th class="p-3">Detalhes</th></tr></thead>
+    <thead class="bg-neutral-950 text-amber-100"><tr><th class="p-3">ID</th><th class="p-3">Cliente</th><th class="p-3">Total</th><th class="p-3">Pagamento</th><th class="p-3">Status</th><th class="p-3">Data</th><th class="p-3">Detalhes</th></tr></thead>
     <tbody>
       <% sales.forEach((s) => { %>
+      <% const st = s.recebimento_status || 'quitado'; %>
       <tr class="border-t border-slate-800 text-slate-200">
         <td class="p-3 text-center"><%= s.id %></td>
         <td class="p-3 text-center"><%= s.cliente_nome || "Consumidor final" %></td>
         <td class="p-3 text-center text-amber-200 font-semibold">R$ <%= Number(s.total).toFixed(2) %></td>
         <td class="p-3 text-center"><%= s.forma_pagamento %></td>
+        <td class="p-3 text-center">
+          <% if (st === 'pendente') { %>
+            <span class="text-amber-300 font-medium text-xs uppercase">Pendente</span>
+          <% } else { %>
+            <span class="text-slate-500 text-xs">Quitado</span>
+          <% } %>
+        </td>
         <td class="p-3 text-center text-slate-300"><%= new Date(s.created_at).toLocaleString("pt-BR") %></td>
         <td class="p-3 text-center"><a class="text-amber-300 hover:text-amber-200 font-medium" href="/historico/<%= s.id %>">Ver</a></td>
       </tr>

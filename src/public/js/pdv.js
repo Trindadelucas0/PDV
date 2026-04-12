@@ -7,6 +7,7 @@ let finalizando = false;
 let addInputBusy = false;
 let printLastSaleBusy = false;
 let lastReceiptPageUrl = "";
+let lastReceiptPdfUrl = "";
 
 const RECEIPT_FRAGMENT_SPINNER = `<div class="flex flex-col items-center justify-center gap-3 py-10 text-slate-500 text-sm">
   <div class="h-8 w-8 border-2 border-amber-500/30 border-t-amber-400 rounded-full animate-spin"></div>
@@ -117,10 +118,13 @@ function getTotalVenda() {
 
 function togglePainelPagamento() {
   const modo = document.getElementById("modo_pagamento").value;
-  document.getElementById("painel_dinheiro").classList.toggle("hidden", modo !== "Dinheiro");
-  document.getElementById("painel_pix").classList.toggle("hidden", modo !== "Pix");
-  document.getElementById("painel_cartao").classList.toggle("hidden", modo !== "Cartão crédito" && modo !== "Cartão");
-  document.getElementById("painel_misto").classList.toggle("hidden", modo !== "Misto");
+  const fiado = modo === "A receber";
+  const painelFiado = document.getElementById("painel_a_receber");
+  if (painelFiado) painelFiado.classList.toggle("hidden", !fiado);
+  document.getElementById("painel_dinheiro").classList.toggle("hidden", modo !== "Dinheiro" || fiado);
+  document.getElementById("painel_pix").classList.toggle("hidden", modo !== "Pix" || fiado);
+  document.getElementById("painel_cartao").classList.toggle("hidden", (modo !== "Cartão crédito" && modo !== "Cartão") || fiado);
+  document.getElementById("painel_misto").classList.toggle("hidden", modo !== "Misto" || fiado);
   updateTotals();
 }
 
@@ -144,7 +148,9 @@ function updateTotals() {
   const modo = document.getElementById("modo_pagamento").value;
   let troco = 0;
 
-  if (modo === "Dinheiro") {
+  if (modo === "A receber") {
+    troco = 0;
+  } else if (modo === "Dinheiro") {
     const recebido = round2(Number(document.getElementById("valor_recebido")?.value || 0));
     troco = Math.max(0, round2(recebido - total));
   } else if (modo === "Misto") {
@@ -190,12 +196,14 @@ async function openReceiptModal(saleId, options = {}) {
   const content = document.getElementById("receipt_modal_content");
   const yesBtn = document.getElementById("receipt_yes_btn");
   const downloadBtn = document.getElementById("receipt_download_btn");
-  const actionBtn = yesBtn || downloadBtn;
   if (!modal || !content) {
     throw new Error("Modal do recibo não encontrado na tela.");
   }
 
+  lastReceiptPageUrl = "";
+  lastReceiptPdfUrl = "";
   if (yesBtn) yesBtn.disabled = true;
+  if (downloadBtn) downloadBtn.disabled = true;
 
   if (!deferModalUntilLoaded) {
     content.innerHTML = RECEIPT_FRAGMENT_SPINNER;
@@ -210,9 +218,7 @@ async function openReceiptModal(saleId, options = {}) {
     const html = await res.text();
     content.innerHTML = html;
     lastReceiptPageUrl = `/vendas/recibo/${saleId}`;
-    if (actionBtn) {
-      actionBtn.dataset.href = lastReceiptPageUrl;
-    }
+    lastReceiptPdfUrl = `/vendas/recibo/${saleId}.pdf`;
     if (deferModalUntilLoaded) {
       showReceiptModalEl();
     }
@@ -224,17 +230,20 @@ async function openReceiptModal(saleId, options = {}) {
     throw err;
   } finally {
     if (yesBtn) yesBtn.disabled = false;
+    if (downloadBtn) downloadBtn.disabled = false;
   }
 }
 
 function closeReceiptModal() {
   const modal = document.getElementById("receipt_modal");
+  const content = document.getElementById("receipt_modal_content");
   if (!modal) return;
   modal.classList.remove("flex");
   modal.classList.add("hidden");
   modal.style.display = "";
   modal.style.visibility = "";
   modal.style.opacity = "";
+  if (content) content.innerHTML = "";
 }
 
 function openReceiptInNewTab() {
@@ -248,6 +257,82 @@ function openReceiptInNewTab() {
     return;
   }
   closeReceiptModal();
+}
+
+async function downloadReceiptPdf() {
+  if (!lastReceiptPdfUrl) {
+    showToast("PDF do recibo ainda não está pronto.", "error");
+    return;
+  }
+  const btn = document.getElementById("receipt_download_btn");
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch(lastReceiptPdfUrl, { credentials: "same-origin" });
+    if (!res.ok) {
+      showToast("Não foi possível baixar o PDF.", "error");
+      return;
+    }
+    const ct = (res.headers.get("content-type") || "").toLowerCase();
+    if (!ct.includes("pdf")) {
+      showToast("O servidor não retornou um PDF.", "error");
+      return;
+    }
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    const idMatch = lastReceiptPdfUrl.match(/\/(\d+)\.pdf(?:\?|$)/);
+    let filename = idMatch ? `recibo-${idMatch[1]}.pdf` : "recibo.pdf";
+    const dispo = res.headers.get("content-disposition") || "";
+    const m = /filename\*=UTF-8''([^;\n]+)|filename="?([^";\n]+)"?/i.exec(dispo);
+    if (m) {
+      try {
+        filename = decodeURIComponent((m[1] || m[2] || filename).trim());
+      } catch {
+        filename = m[2] || filename;
+      }
+    }
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    closeReceiptModal();
+  } catch (e) {
+    showToast("Erro de rede ao baixar o PDF.", "error");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function refreshUltimaVendaResumo() {
+  const el = document.getElementById("ultima_venda_resumo");
+  if (!el) return;
+  try {
+    const res = await fetch("/vendas/ultima-venda/sessao", { credentials: "same-origin" });
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {
+      el.textContent = "Resposta inválida ao buscar última venda.";
+      return;
+    }
+    if (!res.ok) {
+      el.textContent = data.error || "Nenhuma venda nesta sessão ainda.";
+      return;
+    }
+    const r = data.resumo;
+    if (!r) {
+      el.textContent = `Última nesta sessão: venda #${data.saleId}.`;
+      return;
+    }
+    const dt = new Date(r.createdAt).toLocaleString("pt-BR");
+    const pend = r.recebimentoStatus === "pendente" ? " · Pendente a receber" : "";
+    el.textContent = `Última nesta sessão: #${r.id} — ${r.clienteNome} — R$ ${Number(r.total).toFixed(2)} — ${r.formaPagamento} — ${dt}${pend}`;
+  } catch (e) {
+    el.textContent = "Não foi possível carregar a última venda.";
+  }
 }
 
 async function openLastSessionSaleReceipt() {
@@ -575,6 +660,10 @@ togglePainelPagamento();
 
 async function finalizeSale() {
   if (finalizando) return;
+  if (addInputBusy) {
+    showToast("Aguarde a busca do produto terminar.", "info");
+    return;
+  }
   if (!items.length) {
     showToast("Adicione itens antes de finalizar.", "error");
     return;
@@ -620,6 +709,8 @@ async function finalizeSale() {
       showToast(`A soma das partes deve ser ${currency(total)}.`, "error");
       return;
     }
+  } else if (modo === "A receber") {
+    /* sem campos extras no corpo */
   }
 
   try {
@@ -627,6 +718,7 @@ async function finalizeSale() {
     const response = await fetch("/vendas/finalizar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify(body)
     });
     let result = {};
@@ -640,9 +732,24 @@ async function finalizeSale() {
       showToast(result.error || "Erro ao finalizar venda.", response.status === 409 ? "error" : "error");
       return;
     }
-    await openReceiptModal(result.saleId);
+    const saleIdSaved = result.saleId;
+    setPdvLoadingText("Carregando recibo", "Buscando visualização do recibo…");
+    let receiptOk = false;
+    try {
+      await openReceiptModal(saleIdSaved, { deferModalUntilLoaded: true });
+      receiptOk = true;
+    } catch (recErr) {
+      showToast(
+        "Venda registrada. Abra o recibo em Histórico ou em «Última venda» se não aparecer aqui.",
+        "warning"
+      );
+      closeReceiptModal();
+    }
     resetCurrentSale();
-    showToast("Venda finalizada com sucesso.", "success");
+    if (receiptOk) {
+      showToast("Venda finalizada com sucesso.", "success");
+    }
+    refreshUltimaVendaResumo();
   } catch (e) {
     showToast(e?.message || "Erro de rede. Tente novamente.", "error");
   } finally {
@@ -650,12 +757,14 @@ async function finalizeSale() {
   }
 }
 
+refreshUltimaVendaResumo();
+
 document.getElementById("finishBtn").addEventListener("click", finalizeSale);
 document.getElementById("print_last_sale_btn")?.addEventListener("click", openLastSessionSaleReceipt);
 document.getElementById("receipt_no_btn")?.addEventListener("click", closeReceiptModal);
 document.getElementById("receipt_close_btn")?.addEventListener("click", closeReceiptModal);
 document.getElementById("receipt_yes_btn")?.addEventListener("click", openReceiptInNewTab);
-document.getElementById("receipt_download_btn")?.addEventListener("click", openReceiptInNewTab);
+document.getElementById("receipt_download_btn")?.addEventListener("click", downloadReceiptPdf);
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "F2") {

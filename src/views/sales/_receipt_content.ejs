@@ -23,6 +23,9 @@
   <% } %>
   <p>Total: R$ <%= Number(sale.total).toFixed(2) %></p>
   <p>Forma: <%= sale.forma_pagamento %></p>
+  <% if ((sale.recebimento_status || 'quitado') === 'pendente') { %>
+    <p class="font-bold text-red-700">PAGAMENTO PENDENTE — valor a receber no caixa.</p>
+  <% } %>
   <% if (Number(sale.pagamento_dinheiro) > 0) { %>
     <p>Dinheiro: R$ <%= Number(sale.pagamento_dinheiro).toFixed(2) %></p>
   <% } %>
