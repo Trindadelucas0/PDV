@@ -3,6 +3,39 @@ let debounceTimer = null;
 let sugestoesLista = [];
 let selectedSugIndex = -1;
 let activeSearchController = null;
+let finalizando = false;
+let addInputBusy = false;
+let printLastSaleBusy = false;
+let lastReceiptPageUrl = "";
+
+const RECEIPT_FRAGMENT_SPINNER = `<div class="flex flex-col items-center justify-center gap-3 py-10 text-slate-500 text-sm">
+  <div class="h-8 w-8 border-2 border-amber-500/30 border-t-amber-400 rounded-full animate-spin"></div>
+  <span>Carregando recibo…</span>
+</div>`;
+
+function setPdvLoadingText(title, detail) {
+  const t = document.getElementById("pdv_loading_title");
+  const d = document.getElementById("pdv_loading_detail");
+  if (t) t.textContent = title;
+  if (d) d.textContent = detail;
+}
+
+function setPdvOverlayVisible(visible) {
+  const overlay = document.getElementById("pdv_loading_overlay");
+  if (!overlay) return;
+  overlay.classList.toggle("hidden", !visible);
+  overlay.classList.toggle("flex", visible);
+}
+
+function showReceiptModalEl() {
+  const modal = document.getElementById("receipt_modal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  modal.style.display = "flex";
+  modal.style.visibility = "visible";
+  modal.style.opacity = "1";
+}
 
 function showToast(message, type = "info") {
   const root = document.getElementById("toast_root");
@@ -67,15 +100,26 @@ function renderTable() {
   });
 }
 
-function getTotalVenda() {
+function getSubtotalItens() {
   return round2(items.reduce((sum, i) => sum + i.subtotal, 0));
+}
+
+function getDesconto() {
+  const subtotal = getSubtotalItens();
+  const descontoInput = round2(Number(document.getElementById("desconto_valor")?.value || 0));
+  if (descontoInput <= 0) return 0;
+  return Math.min(descontoInput, subtotal);
+}
+
+function getTotalVenda() {
+  return round2(getSubtotalItens() - getDesconto());
 }
 
 function togglePainelPagamento() {
   const modo = document.getElementById("modo_pagamento").value;
   document.getElementById("painel_dinheiro").classList.toggle("hidden", modo !== "Dinheiro");
   document.getElementById("painel_pix").classList.toggle("hidden", modo !== "Pix");
-  document.getElementById("painel_cartao").classList.toggle("hidden", modo !== "Cartão");
+  document.getElementById("painel_cartao").classList.toggle("hidden", modo !== "Cartão crédito" && modo !== "Cartão");
   document.getElementById("painel_misto").classList.toggle("hidden", modo !== "Misto");
   updateTotals();
 }
@@ -94,6 +138,8 @@ function updateMistoHint() {
 }
 
 function updateTotals() {
+  const subtotal = getSubtotalItens();
+  const desconto = getDesconto();
   const total = getTotalVenda();
   const modo = document.getElementById("modo_pagamento").value;
   let troco = 0;
@@ -110,8 +156,154 @@ function updateTotals() {
     troco = 0;
   }
 
+  const subtotalEl = document.getElementById("subtotal");
+  const descontoEl = document.getElementById("desconto");
+  if (subtotalEl) subtotalEl.innerText = currency(subtotal);
+  if (descontoEl) descontoEl.innerText = currency(desconto);
   document.getElementById("total").innerText = currency(total);
   document.getElementById("troco").innerText = currency(troco);
+}
+
+function setFinalizandoState(isLoading) {
+  finalizando = isLoading;
+  const finishBtn = document.getElementById("finishBtn");
+  const addBtn = document.getElementById("addBtn");
+  const busca = document.getElementById("busca_produto");
+  const printLast = document.getElementById("print_last_sale_btn");
+  if (finishBtn) finishBtn.disabled = isLoading;
+  if (addBtn) addBtn.disabled = isLoading || addInputBusy;
+  if (busca) busca.disabled = isLoading;
+  if (printLast) printLast.disabled = isLoading || printLastSaleBusy;
+  setPdvOverlayVisible(isLoading);
+  if (isLoading) {
+    setPdvLoadingText("Finalizando venda", "Enviando dados ao servidor…");
+  } else {
+    setPdvLoadingText("Aguarde", "Processando no servidor.");
+    if (addBtn) addBtn.disabled = addInputBusy;
+    if (printLast) printLast.disabled = printLastSaleBusy;
+  }
+}
+
+async function openReceiptModal(saleId, options = {}) {
+  const deferModalUntilLoaded = options.deferModalUntilLoaded !== false;
+  const modal = document.getElementById("receipt_modal");
+  const content = document.getElementById("receipt_modal_content");
+  const yesBtn = document.getElementById("receipt_yes_btn");
+  const downloadBtn = document.getElementById("receipt_download_btn");
+  const actionBtn = yesBtn || downloadBtn;
+  if (!modal || !content) {
+    throw new Error("Modal do recibo não encontrado na tela.");
+  }
+
+  if (yesBtn) yesBtn.disabled = true;
+
+  if (!deferModalUntilLoaded) {
+    content.innerHTML = RECEIPT_FRAGMENT_SPINNER;
+    showReceiptModalEl();
+  }
+
+  try {
+    const res = await fetch(`/vendas/recibo/${saleId}/fragment`, { credentials: "same-origin" });
+    if (!res.ok) {
+      throw new Error("Não foi possível carregar o recibo.");
+    }
+    const html = await res.text();
+    content.innerHTML = html;
+    lastReceiptPageUrl = `/vendas/recibo/${saleId}`;
+    if (actionBtn) {
+      actionBtn.dataset.href = lastReceiptPageUrl;
+    }
+    if (deferModalUntilLoaded) {
+      showReceiptModalEl();
+    }
+  } catch (err) {
+    if (!deferModalUntilLoaded) {
+      content.innerHTML = `<p class="text-red-600 text-sm p-4 text-center">${escapeHtml(err?.message || "Erro ao carregar recibo.")}</p>`;
+      showReceiptModalEl();
+    }
+    throw err;
+  } finally {
+    if (yesBtn) yesBtn.disabled = false;
+  }
+}
+
+function closeReceiptModal() {
+  const modal = document.getElementById("receipt_modal");
+  if (!modal) return;
+  modal.classList.remove("flex");
+  modal.classList.add("hidden");
+  modal.style.display = "";
+  modal.style.visibility = "";
+  modal.style.opacity = "";
+}
+
+function openReceiptInNewTab() {
+  if (!lastReceiptPageUrl) {
+    showToast("Recibo ainda não está pronto.", "error");
+    return;
+  }
+  const w = window.open(lastReceiptPageUrl, "_blank", "noopener,noreferrer");
+  if (!w) {
+    showToast("Permita pop-ups para abrir o recibo.", "error");
+    return;
+  }
+  closeReceiptModal();
+}
+
+async function openLastSessionSaleReceipt() {
+  if (printLastSaleBusy || finalizando) return;
+  printLastSaleBusy = true;
+  const btn = document.getElementById("print_last_sale_btn");
+  const savedLabel = btn?.dataset.defaultLabel || btn?.textContent || "Imprimir última venda";
+  if (btn && !btn.dataset.defaultLabel) btn.dataset.defaultLabel = savedLabel;
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Carregando…";
+  }
+
+  setPdvOverlayVisible(true);
+  setPdvLoadingText("Última venda", "Consultando a sessão no servidor…");
+
+  try {
+    const response = await fetch("/vendas/ultima-venda/sessao", { credentials: "same-origin" });
+    let result = {};
+    try {
+      result = await response.json();
+    } catch (e) {
+      throw new Error("Resposta inválida ao buscar última venda.");
+    }
+    if (!response.ok) {
+      throw new Error(result.error || "Nenhuma venda nesta sessão ainda.");
+    }
+    setPdvOverlayVisible(false);
+    setPdvLoadingText("Aguarde", "Processando no servidor.");
+    await openReceiptModal(result.saleId, { deferModalUntilLoaded: false });
+  } catch (e) {
+    showToast(e?.message || "Não foi possível abrir a última venda.", "error");
+  } finally {
+    printLastSaleBusy = false;
+    setPdvOverlayVisible(false);
+    if (btn) {
+      btn.textContent = btn.dataset.defaultLabel || savedLabel;
+      btn.disabled = finalizando;
+    }
+  }
+}
+
+function resetCurrentSale() {
+  items.splice(0, items.length);
+  renderTable();
+  document.getElementById("desconto_valor").value = "0";
+  document.getElementById("modo_pagamento").value = "Dinheiro";
+  document.getElementById("valor_recebido").value = "0";
+  document.getElementById("parte_dinheiro").value = "0";
+  document.getElementById("parte_cartao").value = "0";
+  document.getElementById("parte_pix").value = "0";
+  document.getElementById("valor_recebido_dinheiro").value = "0";
+  hideSugestoes();
+  togglePainelPagamento();
+  const busca = document.getElementById("busca_produto");
+  if (busca) busca.focus();
 }
 
 function addProductFromJson(product) {
@@ -201,7 +393,8 @@ async function buscarSugestoes(q) {
   if (ld) ld.classList.remove("hidden");
   try {
     const res = await fetch(`/vendas/api/produtos?q=${encodeURIComponent(q)}`, {
-      signal: activeSearchController.signal
+      signal: activeSearchController.signal,
+      credentials: "same-origin"
     });
     if (!res.ok) {
       showToast("Não foi possível buscar produtos.", "error");
@@ -221,7 +414,7 @@ async function buscarSugestoes(q) {
 
 async function tryProdutoPorCodigoExato(code) {
   try {
-    const res = await fetch(`/vendas/produto/${encodeURIComponent(code)}`);
+    const res = await fetch(`/vendas/produto/${encodeURIComponent(code)}`, { credentials: "same-origin" });
     if (!res.ok) return null;
     return await res.json();
   } catch (e) {
@@ -230,59 +423,76 @@ async function tryProdutoPorCodigoExato(code) {
 }
 
 async function tryAddFromInput() {
+  if (addInputBusy || finalizando) return;
   const input = document.getElementById("busca_produto");
   const text = input.value.trim();
   if (!text) return;
 
-  let porCodigo;
+  const addBtn = document.getElementById("addBtn");
+  const prevLabel = addBtn?.textContent;
+  addInputBusy = true;
+  if (addBtn) {
+    addBtn.disabled = true;
+    addBtn.textContent = "…";
+  }
+
   try {
-    porCodigo = await tryProdutoPorCodigoExato(text);
-  } catch (e) {
-    showToast("Erro de rede.", "error");
-    return;
-  }
-  if (porCodigo) {
-    addProductFromJson(porCodigo);
-    input.value = "";
-    hideSugestoes();
-    return;
-  }
-
-  if (sugestoesLista.length === 1) {
-    addProductFromJson(sugestoesLista[0]);
-    input.value = "";
-    hideSugestoes();
-    return;
-  }
-
-  if (sugestoesLista.length > 1) {
-    const exato = sugestoesLista.find((p) => p.codigo_barras === text);
-    if (exato) {
-      addProductFromJson(exato);
+    let porCodigo;
+    try {
+      porCodigo = await tryProdutoPorCodigoExato(text);
+    } catch (e) {
+      showToast("Erro de rede.", "error");
+      return;
+    }
+    if (porCodigo) {
+      addProductFromJson(porCodigo);
       input.value = "";
       hideSugestoes();
       return;
     }
-    showToast("Vários resultados — clique em um na lista.", "info");
-    return;
-  }
 
-  try {
-    const res = await fetch(`/vendas/api/produtos?q=${encodeURIComponent(text)}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.length === 1) {
-        addProductFromJson(data[0]);
+    if (sugestoesLista.length === 1) {
+      addProductFromJson(sugestoesLista[0]);
+      input.value = "";
+      hideSugestoes();
+      return;
+    }
+
+    if (sugestoesLista.length > 1) {
+      const exato = sugestoesLista.find((p) => p.codigo_barras === text);
+      if (exato) {
+        addProductFromJson(exato);
         input.value = "";
         hideSugestoes();
         return;
       }
+      showToast("Vários resultados — clique em um na lista.", "info");
+      return;
     }
-  } catch (e) {
-    showToast("Erro de rede.", "error");
-    return;
+
+    try {
+      const res = await fetch(`/vendas/api/produtos?q=${encodeURIComponent(text)}`, { credentials: "same-origin" });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.length === 1) {
+          addProductFromJson(data[0]);
+          input.value = "";
+          hideSugestoes();
+          return;
+        }
+      }
+    } catch (e) {
+      showToast("Erro de rede.", "error");
+      return;
+    }
+    showToast("Produto não encontrado. Use 1+ letra ou o código completo.", "error");
+  } finally {
+    addInputBusy = false;
+    if (addBtn) {
+      addBtn.textContent = prevLabel || "Adicionar";
+      addBtn.disabled = finalizando;
+    }
   }
-  showToast("Produto não encontrado. Use 1+ letra ou o código completo.", "error");
 }
 
 document.getElementById("busca_produto").addEventListener("input", (e) => {
@@ -341,9 +551,16 @@ document.addEventListener("click", (e) => {
 
 document.getElementById("modo_pagamento").addEventListener("change", togglePainelPagamento);
 document.getElementById("valor_recebido").addEventListener("input", updateTotals);
+document.getElementById("desconto_valor").addEventListener("input", updateTotals);
 ["parte_dinheiro", "parte_cartao", "parte_pix", "valor_recebido_dinheiro"].forEach((id) => {
   const el = document.getElementById(id);
   if (el) el.addEventListener("input", updateTotals);
+});
+document.querySelectorAll(".modo-rapido").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.getElementById("modo_pagamento").value = btn.dataset.modo;
+    togglePainelPagamento();
+  });
 });
 
 document.getElementById("btn_restante_cartao").addEventListener("click", () => {
@@ -357,8 +574,15 @@ document.getElementById("btn_restante_cartao").addEventListener("click", () => {
 togglePainelPagamento();
 
 async function finalizeSale() {
+  if (finalizando) return;
   if (!items.length) {
     showToast("Adicione itens antes de finalizar.", "error");
+    return;
+  }
+  const subtotal = getSubtotalItens();
+  const desconto = getDesconto();
+  if (desconto - subtotal > 0.02) {
+    showToast("Desconto não pode ser maior que o subtotal.", "error");
     return;
   }
   const modo = document.getElementById("modo_pagamento").value;
@@ -373,13 +597,16 @@ async function finalizeSale() {
       endereco: document.getElementById("cliente_endereco").value
     },
     items,
-    modo_pagamento: modo
+    modo_pagamento: modo,
+    desconto
   };
 
   if (modo === "Dinheiro") {
     body.valor_recebido = document.getElementById("valor_recebido").value;
-  } else if (modo === "Cartão") {
+  } else if (modo === "Cartão" || modo === "Cartão crédito") {
     body.parcelas = document.getElementById("parcelas_cartao").value;
+  } else if (modo === "Cartão débito") {
+    body.parcelas = 1;
   } else if (modo === "Misto") {
     body.parte_dinheiro = document.getElementById("parte_dinheiro").value;
     body.parte_cartao = document.getElementById("parte_cartao").value;
@@ -396,6 +623,7 @@ async function finalizeSale() {
   }
 
   try {
+    setFinalizandoState(true);
     const response = await fetch("/vendas/finalizar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -412,13 +640,22 @@ async function finalizeSale() {
       showToast(result.error || "Erro ao finalizar venda.", response.status === 409 ? "error" : "error");
       return;
     }
-    window.location.href = `/vendas/recibo/${result.saleId}`;
+    await openReceiptModal(result.saleId);
+    resetCurrentSale();
+    showToast("Venda finalizada com sucesso.", "success");
   } catch (e) {
-    showToast("Erro de rede. Tente novamente.", "error");
+    showToast(e?.message || "Erro de rede. Tente novamente.", "error");
+  } finally {
+    setFinalizandoState(false);
   }
 }
 
 document.getElementById("finishBtn").addEventListener("click", finalizeSale);
+document.getElementById("print_last_sale_btn")?.addEventListener("click", openLastSessionSaleReceipt);
+document.getElementById("receipt_no_btn")?.addEventListener("click", closeReceiptModal);
+document.getElementById("receipt_close_btn")?.addEventListener("click", closeReceiptModal);
+document.getElementById("receipt_yes_btn")?.addEventListener("click", openReceiptInNewTab);
+document.getElementById("receipt_download_btn")?.addEventListener("click", openReceiptInNewTab);
 
 document.addEventListener("keydown", (e) => {
   if (e.key === "F2") {
@@ -429,6 +666,7 @@ document.addEventListener("keydown", (e) => {
     e.preventDefault();
     finalizeSale();
   } else if (e.key === "Escape") {
+    closeReceiptModal();
     hideSugestoes();
   }
 });

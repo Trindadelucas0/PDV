@@ -13,6 +13,7 @@ async function createSaleWithItems({
   clienteId,
   total,
   lucro,
+  desconto = 0,
   formaPagamento,
   valorPago,
   troco,
@@ -50,15 +51,16 @@ async function createSaleWithItems({
 
     const saleResult = await client.query(
       `INSERT INTO vendas (
-         cliente_id, total, lucro, forma_pagamento, valor_pago, troco,
+         cliente_id, total, lucro, desconto, forma_pagamento, valor_pago, troco,
          parcelas, pagamento_dinheiro, pagamento_cartao, pagamento_pix
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         clienteId,
         total,
         lucro,
+        desconto,
         formaPagamento,
         valorPago,
         troco,

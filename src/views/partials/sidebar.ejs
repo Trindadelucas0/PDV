@@ -1,16 +1,193 @@
-<div class="min-h-screen flex bg-neutral-950">
-  <aside class="w-64 bg-neutral-950 text-amber-50 p-5 hidden md:block border-r border-amber-500/20">
-    <h1 class="text-xl font-bold mb-1 text-amber-400">ControlePDV</h1>
-    <p class="text-xs text-amber-200/70 mb-6">Painel administrativo</p>
-    <nav class="space-y-2">
-      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/">Dashboard</a>
-      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/produtos">Produtos</a>
-      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/produtos/estoque/ajustar">Ajuste de estoque</a>
-      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/vendas">PDV</a>
-      <a class="block px-3 py-2 rounded-lg bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors" href="/historico">Histórico</a>
+<div class="min-h-screen bg-neutral-950">
+  <div
+    id="sidebar_overlay"
+    class="hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-[2px] md:hidden"
+    aria-hidden="true"
+  ></div>
+
+  <button
+    type="button"
+    id="sidebar_rail_btn"
+    class="hidden fixed left-0 top-1/2 z-[45] -translate-y-1/2 rounded-r-xl border border-amber-500/40 border-l-0 bg-neutral-900/95 py-4 pl-1 pr-2 text-amber-200 shadow-lg shadow-black/30 hover:bg-amber-500/15 hover:text-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-500/60 md:hidden"
+    aria-controls="app_sidebar"
+    aria-label="Abrir menu"
+  >
+    <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M9 6l6 6-6 6" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  </button>
+
+  <aside
+    id="app_sidebar"
+    class="fixed inset-y-0 left-0 z-50 flex w-[min(18rem,88vw)] flex-col bg-neutral-950 text-amber-50 shadow-xl shadow-black/40 border-r border-amber-500/20 transition-transform duration-300 ease-out motion-reduce:transition-none -translate-x-full md:translate-x-0 md:shadow-none"
+    aria-label="Menu de navegação"
+  >
+    <div class="flex shrink-0 items-center justify-between gap-2 border-b border-amber-500/15 px-4 py-3">
+      <div class="min-w-0 flex-1">
+        <h1 class="text-lg font-bold text-amber-400 leading-tight truncate">ControlePDV</h1>
+        <p class="text-xs text-amber-200/70">Painel administrativo</p>
+      </div>
+      <button
+        id="sidebar_inner_toggle_btn"
+        type="button"
+        class="md:hidden shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-amber-500/35 text-amber-200 hover:bg-amber-500/15 focus:outline-none focus:ring-2 focus:ring-amber-500/60"
+        aria-controls="app_sidebar"
+        aria-expanded="true"
+        aria-label="Fechar menu"
+        title="Fechar menu"
+      >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
+    </div>
+    <nav class="flex-1 space-y-1 overflow-y-auto overscroll-contain p-3" id="sidebar_nav">
+      <a class="block rounded-lg px-3 py-2.5 text-sm font-medium bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors border border-transparent hover:border-amber-500/20" href="/">Dashboard</a>
+      <a class="block rounded-lg px-3 py-2.5 text-sm font-medium bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors border border-transparent hover:border-amber-500/20" href="/produtos">Produtos</a>
+      <a class="block rounded-lg px-3 py-2.5 text-sm font-medium bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors border border-transparent hover:border-amber-500/20" href="/produtos/estoque/ajustar">Ajuste de estoque</a>
+      <a class="block rounded-lg px-3 py-2.5 text-sm font-medium bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors border border-transparent hover:border-amber-500/20" href="/vendas">PDV</a>
+      <a class="block rounded-lg px-3 py-2.5 text-sm font-medium bg-neutral-900/60 hover:bg-amber-500/15 hover:text-amber-300 transition-colors border border-transparent hover:border-amber-500/20" href="/historico">Histórico</a>
     </nav>
-    <form action="/logout" method="post" class="mt-8">
-      <button class="w-full bg-amber-500 hover:bg-amber-400 text-neutral-950 px-3 py-2 rounded-lg font-semibold transition-colors">Sair</button>
+    <form action="/logout" method="post" class="shrink-0 border-t border-amber-500/15 p-3">
+      <button type="submit" class="w-full rounded-lg bg-amber-500 hover:bg-amber-400 text-neutral-950 px-3 py-2.5 text-sm font-semibold transition-colors">Sair</button>
     </form>
   </aside>
-  <main class="flex-1 p-4 md:p-8 bg-gradient-to-b from-neutral-900 to-neutral-950 text-slate-100">
+
+  <header class="sticky top-0 z-30 flex items-center gap-3 border-b border-amber-500/20 bg-neutral-950/95 px-4 py-3 backdrop-blur-md md:hidden">
+    <button
+      id="sidebar_toggle_btn"
+      type="button"
+      aria-controls="app_sidebar"
+      aria-expanded="false"
+      aria-label="Abrir menu"
+      title="Abrir ou fechar menu"
+      class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-amber-500/40 bg-neutral-900 text-amber-100 shadow-sm hover:bg-neutral-800 active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-amber-500/70 focus:ring-offset-2 focus:ring-offset-neutral-950"
+    >
+      <svg id="sidebar_toggle_icon_open" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" />
+      </svg>
+      <svg id="sidebar_toggle_icon_close" class="hidden h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+      </svg>
+    </button>
+    <span class="text-sm font-medium text-slate-300 truncate">Menu</span>
+  </header>
+
+  <script>
+    (() => {
+      const mq = window.matchMedia("(min-width: 768px)");
+      const sidebar = document.getElementById("app_sidebar");
+      const overlay = document.getElementById("sidebar_overlay");
+      const toggleBtn = document.getElementById("sidebar_toggle_btn");
+      const innerToggle = document.getElementById("sidebar_inner_toggle_btn");
+      const railBtn = document.getElementById("sidebar_rail_btn");
+      const nav = document.getElementById("sidebar_nav");
+      const iconOpen = document.getElementById("sidebar_toggle_icon_open");
+      const iconClose = document.getElementById("sidebar_toggle_icon_close");
+
+      if (!sidebar || !overlay || !toggleBtn) return;
+
+      const isDesktop = () => mq.matches;
+
+      const setBodyScrollLock = (locked) => {
+        if (isDesktop()) {
+          document.body.classList.remove("overflow-hidden");
+          return;
+        }
+        document.body.classList.toggle("overflow-hidden", !!locked);
+      };
+
+      const setHeaderToggleIcons = (menuOpen) => {
+        if (!iconOpen || !iconClose) return;
+        iconOpen.classList.toggle("hidden", menuOpen);
+        iconClose.classList.toggle("hidden", !menuOpen);
+      };
+
+      const syncRail = (menuOpen) => {
+        if (!railBtn) return;
+        if (isDesktop()) {
+          railBtn.classList.add("hidden");
+          return;
+        }
+        railBtn.classList.toggle("hidden", menuOpen);
+      };
+
+      const syncInnerToggle = (menuOpen) => {
+        if (!innerToggle) return;
+        innerToggle.setAttribute("aria-expanded", menuOpen ? "true" : "false");
+        innerToggle.setAttribute("aria-label", menuOpen ? "Fechar menu" : "Abrir menu");
+      };
+
+      const isMenuOpenMobile = () => !sidebar.classList.contains("-translate-x-full");
+
+      const openSidebar = () => {
+        if (isDesktop()) return;
+        sidebar.classList.remove("-translate-x-full");
+        overlay.classList.remove("hidden");
+        toggleBtn.setAttribute("aria-expanded", "true");
+        toggleBtn.setAttribute("aria-label", "Fechar menu");
+        setHeaderToggleIcons(true);
+        setBodyScrollLock(true);
+        syncRail(true);
+        syncInnerToggle(true);
+      };
+
+      const closeSidebar = () => {
+        if (isDesktop()) return;
+        sidebar.classList.add("-translate-x-full");
+        overlay.classList.add("hidden");
+        toggleBtn.setAttribute("aria-expanded", "false");
+        toggleBtn.setAttribute("aria-label", "Abrir menu");
+        setHeaderToggleIcons(false);
+        setBodyScrollLock(false);
+        syncRail(false);
+        syncInnerToggle(false);
+        toggleBtn.focus();
+      };
+
+      const toggleSidebar = () => {
+        if (isDesktop()) return;
+        if (isMenuOpenMobile()) closeSidebar();
+        else openSidebar();
+      };
+
+      toggleBtn.addEventListener("click", toggleSidebar);
+      innerToggle?.addEventListener("click", () => {
+        if (isDesktop()) return;
+        closeSidebar();
+      });
+      railBtn?.addEventListener("click", openSidebar);
+      overlay.addEventListener("click", closeSidebar);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !isDesktop() && isMenuOpenMobile()) closeSidebar();
+      });
+      mq.addEventListener("change", () => {
+        if (isDesktop()) {
+          overlay.classList.add("hidden");
+          setBodyScrollLock(false);
+          toggleBtn.setAttribute("aria-expanded", "false");
+          toggleBtn.setAttribute("aria-label", "Abrir menu");
+          setHeaderToggleIcons(false);
+          syncRail(false);
+          syncInnerToggle(true);
+        } else {
+          syncRail(isMenuOpenMobile());
+          syncInnerToggle(isMenuOpenMobile());
+          setHeaderToggleIcons(isMenuOpenMobile());
+        }
+      });
+      nav?.addEventListener("click", (e) => {
+        const a = e.target.closest("a");
+        if (a && a.getAttribute("href") && !isDesktop()) closeSidebar();
+      });
+
+      if (!isDesktop()) {
+        syncRail(isMenuOpenMobile());
+        setHeaderToggleIcons(isMenuOpenMobile());
+        syncInnerToggle(isMenuOpenMobile());
+      } else {
+        railBtn?.classList.add("hidden");
+      }
+    })();
+  </script>
+  <main class="min-h-[calc(100dvh-3.5rem)] p-4 pb-8 bg-gradient-to-b from-neutral-900 to-neutral-950 text-slate-100 md:min-h-screen md:pl-[min(18rem,88vw)] md:pt-8 md:pr-8 md:pb-8">

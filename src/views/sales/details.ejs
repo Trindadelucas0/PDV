@@ -4,6 +4,7 @@
   <h2 class="text-3xl font-bold text-amber-100">Venda #<%= sale.id %></h2>
   <p class="text-sm text-slate-300">Detalhes completos da venda e dos itens.</p>
 </section>
+<% const subtotalBruto = items.reduce((sum, item) => sum + Number(item.subtotal || 0), 0); %>
 <div class="bg-neutral-900 rounded-xl border border-amber-500/20 p-5 mb-4 text-slate-200">
   <p><strong class="text-amber-200">Cliente:</strong> <%= sale.cliente_nome || "Consumidor final" %></p>
   <p><strong class="text-amber-200">CPF:</strong> <%= sale.cpf || "-" %></p>
@@ -21,6 +22,10 @@
     <p><strong class="text-amber-200">Parte no cartao:</strong> R$ <%= Number(sale.pagamento_cartao).toFixed(2) %>
       <% if (Number(sale.parcelas) > 1) { %>(<%= sale.parcelas %>x)<% } %>
     </p>
+  <% } %>
+  <p><strong class="text-amber-200">Subtotal:</strong> R$ <%= Number(subtotalBruto).toFixed(2) %></p>
+  <% if (Number(sale.desconto) > 0) { %>
+    <p><strong class="text-amber-200">Desconto:</strong> R$ <%= Number(sale.desconto).toFixed(2) %></p>
   <% } %>
   <p><strong class="text-amber-200">Total:</strong> R$ <%= Number(sale.total).toFixed(2) %></p>
   <p><strong class="text-amber-200">Valor pago:</strong> R$ <%= Number(sale.valor_pago).toFixed(2) %> · <strong class="text-amber-200">Troco:</strong> R$ <%= Number(sale.troco).toFixed(2) %></p>

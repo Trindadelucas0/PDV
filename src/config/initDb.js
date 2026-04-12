@@ -68,6 +68,9 @@ async function initDb() {
     ALTER TABLE vendas ADD COLUMN IF NOT EXISTS pagamento_pix NUMERIC(10,2) NOT NULL DEFAULT 0;
   `);
   await pool.query(`
+    ALTER TABLE vendas ADD COLUMN IF NOT EXISTS desconto NUMERIC(10,2) NOT NULL DEFAULT 0;
+  `);
+  await pool.query(`
     ALTER TABLE vendas ALTER COLUMN forma_pagamento TYPE VARCHAR(120);
   `);
 

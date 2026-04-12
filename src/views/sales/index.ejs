@@ -2,12 +2,18 @@
 <%- include("../partials/sidebar") %>
 
 <section class="bg-neutral-900 border border-amber-500/20 rounded-2xl p-6 mb-6">
-  <h2 class="text-3xl font-bold text-amber-100 mb-2">Vendas / Caixa</h2>
-  <p class="text-sm text-slate-300 mb-3">Digite o nome ou o código do produto; escolha na lista ou bip o código e pressione Enter.</p>
-  <div class="flex flex-wrap items-center gap-2 text-xs text-slate-300">
-    <span class="px-2 py-1 rounded-md bg-neutral-950 border border-amber-500/30"><kbd>F2</kbd> busca</span>
-    <span class="px-2 py-1 rounded-md bg-neutral-950 border border-amber-500/30"><kbd>F4</kbd> finalizar</span>
-    <span class="px-2 py-1 rounded-md bg-neutral-950 border border-amber-500/30"><kbd>Esc</kbd> fechar lista</span>
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h2 class="text-3xl font-bold text-amber-100 mb-1">Vendas / Caixa</h2>
+      <p class="text-sm text-slate-300">Digite nome ou código de barras e finalize com segurança.</p>
+    </div>
+    <button
+      type="button"
+      id="print_last_sale_btn"
+      class="bg-amber-500 hover:bg-amber-400 disabled:opacity-60 disabled:cursor-not-allowed text-neutral-950 px-4 py-2 rounded-lg font-semibold transition-colors"
+    >
+      Imprimir última venda
+    </button>
   </div>
 </section>
 <div id="toast_root" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none max-w-sm"></div>
@@ -20,7 +26,7 @@
     </div>
     <div class="relative mb-2">
       <input id="busca_produto" autocomplete="off" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2.5 pr-24 focus:outline-none focus:ring-2 focus:ring-amber-500" placeholder="Nome, parte do nome ou código de barras" />
-      <button type="button" id="addBtn" class="absolute right-1 top-1 bottom-1 bg-brand-500 hover:bg-brand-600 text-neutral-950 px-3 rounded-md text-sm font-semibold transition-colors">Adicionar</button>
+      <button type="button" id="addBtn" class="absolute right-1 top-1 bottom-1 bg-brand-500 hover:bg-brand-600 disabled:opacity-60 disabled:cursor-not-allowed text-neutral-950 px-3 rounded-md text-sm font-semibold transition-colors min-w-[5.5rem]">Adicionar</button>
       <div id="sugestoes" class="hidden absolute z-20 left-0 right-0 mt-1 bg-neutral-950 border border-amber-500/25 rounded-lg shadow-2xl max-h-56 overflow-auto"></div>
     </div>
     <p class="text-xs text-slate-400 mb-4">A partir de 1 letra já busca na lista. Código completo adiciona direto.</p>
@@ -57,9 +63,16 @@
       <select id="modo_pagamento" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-amber-500">
         <option value="Dinheiro">Dinheiro</option>
         <option value="Pix">Pix</option>
-        <option value="Cartão">Cartão</option>
+        <option value="Cartão débito">Cartão débito</option>
+        <option value="Cartão crédito">Cartão crédito</option>
         <option value="Misto">Misto (dinheiro + cartão / pix)</option>
       </select>
+      <div class="grid grid-cols-2 gap-2 mb-3">
+        <button type="button" class="modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Dinheiro">Dinheiro</button>
+        <button type="button" class="modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Pix">Pix</button>
+        <button type="button" class="modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Cartão débito">Cartão débito</button>
+        <button type="button" class="modo-rapido bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm hover:border-amber-500/50" data-modo="Cartão crédito">Cartão crédito</button>
+      </div>
 
       <div id="painel_dinheiro" class="space-y-2">
         <label class="block text-xs text-slate-400">Valor recebido (dinheiro)</label>
@@ -69,7 +82,7 @@
       <div id="painel_pix" class="hidden text-sm text-slate-300 py-2">Pagamento integral via Pix (sem troco).</div>
 
       <div id="painel_cartao" class="hidden space-y-2">
-        <label class="block text-xs text-slate-400">Parcelas no cartão</label>
+        <label class="block text-xs text-slate-400">Parcelas no cartão (crédito)</label>
         <select id="parcelas_cartao" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500">
           <% for (let i = 1; i <= 12; i++) { %>
             <option value="<%= i %>"><%= i %>x</option>
@@ -108,12 +121,60 @@
       </div>
     </div>
 
+    <div>
+      <label class="block text-xs text-slate-400 mb-1">Desconto (R$)</label>
+      <input id="desconto_valor" type="number" step="0.01" min="0" value="0" class="w-full bg-neutral-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-500" />
+    </div>
+
     <div class="bg-neutral-950 border border-amber-500/30 rounded-lg p-4 text-sm">
+      <p class="text-slate-300">Subtotal: <strong id="subtotal" class="text-slate-100">R$ 0.00</strong></p>
+      <p class="text-slate-300">Desconto: <strong id="desconto" class="text-amber-200">R$ 0.00</strong></p>
       <p class="text-slate-300">Total: <strong id="total" class="text-amber-300 text-lg">R$ 0.00</strong></p>
       <p class="text-slate-300">Troco: <strong id="troco" class="text-amber-200">R$ 0.00</strong></p>
     </div>
-    <button type="button" id="finishBtn" class="w-full bg-brand-500 hover:bg-brand-600 text-neutral-950 font-semibold py-3 rounded-lg transition-colors">Finalizar e imprimir recibo</button>
+    <button type="button" id="finishBtn" class="w-full bg-brand-500 hover:bg-brand-600 text-neutral-950 font-semibold py-3 rounded-lg transition-colors">Finalizar venda</button>
   </section>
 </div>
+<div id="receipt_modal" class="hidden fixed inset-0 z-[80] bg-neutral-950/80 p-4 overflow-y-auto items-center justify-center">
+  <div class="w-full max-w-md my-auto bg-neutral-900 border border-amber-500/30 rounded-xl p-4 shadow-2xl">
+    <p class="text-amber-100 font-semibold mb-1">Venda concluída</p>
+    <p class="text-slate-300 text-sm mb-3">Abrir o recibo em outra guia para imprimir ou conferir.</p>
+    <div id="receipt_modal_content" class="print-area max-h-[50vh] overflow-auto rounded border border-slate-700 bg-white p-2"></div>
+    <div class="print:hidden mt-3 flex justify-end gap-2">
+      <button type="button" id="receipt_yes_btn" class="bg-brand-500 hover:bg-brand-600 disabled:opacity-60 disabled:cursor-not-allowed text-neutral-950 px-4 py-2 rounded-lg font-semibold">Abrir recibo</button>
+      <button type="button" id="receipt_no_btn" class="bg-neutral-800 hover:bg-neutral-700 text-slate-100 px-4 py-2 rounded-lg">Não</button>
+    </div>
+  </div>
+</div>
+<div id="pdv_loading_overlay" class="hidden fixed inset-0 z-[60] bg-neutral-950/75 backdrop-blur-sm items-center justify-center">
+  <div class="bg-neutral-900 border border-amber-500/30 rounded-xl px-6 py-5 text-center max-w-xs">
+    <div class="w-10 h-10 mx-auto border-4 border-amber-500/30 border-t-amber-400 rounded-full animate-spin mb-3"></div>
+    <p id="pdv_loading_title" class="text-amber-100 font-medium">Aguarde</p>
+    <p id="pdv_loading_detail" class="text-slate-300 text-xs mt-1">Processando no servidor.</p>
+  </div>
+</div>
+<style>
+  @media print {
+    body > * {
+      display: none !important;
+    }
+    #receipt_modal {
+      display: block !important;
+      position: static !important;
+      background: #fff !important;
+      padding: 0 !important;
+    }
+    #receipt_modal .print\\:hidden {
+      display: none !important;
+    }
+    #receipt_modal_content {
+      display: block !important;
+      max-height: none !important;
+      overflow: visible !important;
+      border: none !important;
+      padding: 0 !important;
+    }
+  }
+</style>
 <script src="/js/pdv.js"></script>
 <%- include("../partials/footer") %>
