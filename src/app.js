@@ -54,6 +54,8 @@ app.use((req, res, next) => {
     phone: process.env.STORE_PHONE || "",
     address: process.env.STORE_ADDRESS || ""
   };
+  /* Troque ASSET_VERSION no deploy para forçar navegador a baixar styles.css novo */
+  res.locals.cssVersion = process.env.ASSET_VERSION || "1";
   next();
 });
 

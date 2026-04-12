@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "build:css": "tailwindcss -i ./src/public/css/input.css -o ./src/public/css/styles.css --watch"
+    "build:css": "tailwindcss -i ./src/public/css/input.css -o ./src/public/css/styles.css --watch",
+    "build:css:once": "tailwindcss -i ./src/public/css/input.css -o ./src/public/css/styles.css"
   },
   "keywords": [
     "pdv",

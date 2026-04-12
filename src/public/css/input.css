@@ -5,3 +5,33 @@
 body {
   @apply bg-slate-100 text-slate-800;
 }
+
+/*
+ * Layout admin: fallback explícito para desktop (VPS / cache antigo).
+ * Não depende só de utilitários Tailwind no HTML — evita menu fixed por cima do conteúdo.
+ */
+@media (min-width: 768px) {
+  #pdv_layout_root {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+  }
+  #app_sidebar {
+    position: relative !important;
+    inset: auto !important;
+    left: auto !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    z-index: 0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+    height: auto !important;
+    min-height: 100vh !important;
+  }
+  #pdv_layout_main {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    min-height: 100vh !important;
+  }
+}
